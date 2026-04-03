@@ -22,3 +22,25 @@
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
+
+# 后端敏感配置
+backend/src/main/resources/application-dev.yml
+backend/src/main/resources/application-prod.yml
+
+# 环境变量
+.env
+
+# 上传文件
+uploads/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 前端
+frontend/node_modules/
+frontend/dist/
+
+# 后端
+backend/target/
+backend/.mvn/
