@@ -529,7 +529,6 @@ GitHub上查看贡献：
 开发新功能：
   本地dev → 创建feature/xxx → 开发提交
           → push到origin/feature/xxx
-          → PR到origin/dev（自己合并）
           → PR到upstream/dev（等负责人合并）
 
 阶段性发布：
@@ -538,29 +537,67 @@ GitHub上查看贡献：
 
 ---
 
-## 十二、快速命令参考
+## 十二、每日开发命令参考
 
 ```bash
-# 每天开始工作
+# ==================== 每天开始工作 ====================
 git checkout dev
-git fetch upstream && git merge upstream/dev
-git push origin dev
-git checkout -b feature/今天的功能
+git fetch upstream
+git reset --hard upstream/dev        # 关键修正点
+git push origin dev --force-with-lease   # 保持个人dev和上游一致
 
-# 开发中
+git checkout -b feature/xxx   # 在新分支开发
+
+# ==================== 开发中 ====================
 git add .
 git commit -m "feat: 完成xxx功能"
-git push origin feature/今天的功能
+git push -u origin HEAD
 
-# 功能完成
-# GitHub：feature/xxx → 自己Fork的dev（自己合并）
-# GitHub：自己Fork的dev → 负责人dev（等负责人合并）
+# ==================== 功能完成 ====================
+# GitHub提交PR：feature/xxx → 负责人dev（等负责人合并）
 
-# 合并后清理本地分支
+# ==================== 合并后清理本地分支 ====================
+git checkout dev
+git branch -d feature/已合并的分支名
+```
+
+负责人
+```bash
+# ==================== 每天开始工作 ====================
+git checkout dev
+git pull origin dev --ff-only     # 直接拉取最新代码
+
+git checkout -b feature/xxx
+
+# ==================== 开发中 ====================
+git add .
+git commit -m "feat: 完成xxx功能"
+git push -u origin HEAD
+
+# ==================== 功能完成 ====================
+# GitHub提交PR：feature/xxx → dev
+
+# ==================== 合并其他成员 PR 之后（重要） ====================
+# 同步最新代码（其他人PR合并后）
+git checkout dev
+git pull origin dev
+
+# 可选：清理远程已合并的分支
+git fetch --prune
+git branch -r --merged | grep -v 'main\|dev' | sed 's/origin\///' | xargs -r git push origin --delete
+
+# ==================== 合并后清理本地分支 ====================
 git checkout dev
 git branch -d feature/已合并的分支名
 
-# 同步负责人最新代码
-git fetch upstream
-git merge upstream/dev
+# ==================== 实用命令 ====================
+# 1. 查看哪些远程分支已合并
+git branch -r --merged
+
+# 2. 一键删除所有已合并的远程 feature 分支（谨慎使用）
+git branch -r --merged | grep origin/feature | sed 's/origin\///' | xargs -r git push origin --delete
+
+# 3. 定期清理本地无用分支
+git fetch --prune
+git branch --merged | grep -v 'dev' | xargs -r git branch -d
 ```
