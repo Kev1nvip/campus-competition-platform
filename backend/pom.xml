@@ -80,6 +80,52 @@
 			<artifactId>spring-security-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<!-- JWT -->
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-api</artifactId>
+			<version>0.12.5</version>
+		</dependency>
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-impl</artifactId>
+			<version>0.12.5</version>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-jackson</artifactId>
+			<version>0.12.5</version>
+			<scope>runtime</scope>
+		</dependency>
+
+		<!-- Knife4j 接口文档 -->
+		<dependency>
+			<groupId>com.github.xiaoymin</groupId>
+			<artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
+			<version>4.4.0</version>
+		</dependency>
+
+		<!-- LangChain4j 核心 -->
+		<dependency>
+			<groupId>dev.langchain4j</groupId>
+			<artifactId>langchain4j</artifactId>
+			<version>0.27.1</version>
+		</dependency>
+
+		<!-- LangChain4j PGVector -->
+		<dependency>
+			<groupId>dev.langchain4j</groupId>
+			<artifactId>langchain4j-pgvector</artifactId>
+			<version>0.27.1</version>
+		</dependency>
+
+		<!-- LangChain4j OpenAI兼容（对接硅基流动） -->
+		<dependency>
+			<groupId>dev.langchain4j</groupId>
+			<artifactId>langchain4j-open-ai</artifactId>
+			<version>0.27.1</version>
+		</dependency>
 	</dependencies>
 
 	<build>
