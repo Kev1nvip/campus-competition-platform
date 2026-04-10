@@ -57,4 +57,8 @@ npm run dev
 # ➜  Local:   http://localhost:5173/
 ```
 
-
+# 查看系统预留端口
+```text
+# 管理员 PowerShell 执行
+netsh interface ipv4 show excludedportrange protocol=tcp
+```
