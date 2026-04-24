@@ -64,7 +64,7 @@ ai:
     api-key: ${SILICONFLOW_API_KEY:}
     base-url: https://api.siliconflow.cn/v1
     embedding-model: BAAI/bge-m3
-    chat-model: Qwen/Qwen2.5-7B-Instruct
+    chat-model: Qwen/Qwen3-8B
 
 # Knife4j接口文档
 knife4j:
