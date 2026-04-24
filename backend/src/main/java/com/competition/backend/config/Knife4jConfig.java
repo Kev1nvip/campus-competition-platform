@@ -14,6 +14,8 @@ public class Knife4jConfig {
 
     @Bean
     public OpenAPI openAPI() {
+        String securitySchemeName = "BearerToken";
+
         return new OpenAPI()
                 .info(new Info()
                         .title("校园学术竞赛管理平台 API")
@@ -21,11 +23,11 @@ public class Knife4jConfig {
                         .version("v1.0.0")
                         .contact(new Contact()
                                 .name("开发团队")))
-                .addSecurityItem(new SecurityRequirement()
-                        .addList("Bearer Token"))
+                .addSecurityItem(new SecurityRequirement().addList(securitySchemeName))
                 .components(new Components()
-                        .addSecuritySchemes("Bearer Token",
+                        .addSecuritySchemes(securitySchemeName,
                                 new SecurityScheme()
+                                        .name(securitySchemeName)
                                         .type(SecurityScheme.Type.HTTP)
                                         .scheme("bearer")
                                         .bearerFormat("JWT")));

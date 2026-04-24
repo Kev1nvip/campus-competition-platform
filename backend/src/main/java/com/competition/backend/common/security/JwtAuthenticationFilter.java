@@ -36,6 +36,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = extractToken(request);
 
+        log.info("Request URI: {}", request.getRequestURI());
+        log.info("Authorization Header: {}", request.getHeader(AUTHORIZATION_HEADER));
+        log.info("Extracted Token: {}", token);
+
         if (StringUtils.hasText(token) && jwtUtil.validateToken(token)) {
             try {
                 Claims claims = jwtUtil.parseToken(token);
@@ -64,6 +68,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 log.warn("Token解析失败：{}", e.getMessage());
                 SecurityContextHolder.clearContext();
             }
+
+            log.info("Token validation successful for user"); // 增加成功日志
+        } else if (StringUtils.hasText(token)) {
+            log.warn("Token validation failed"); // 增加失败日志
         }
 
         filterChain.doFilter(request, response);

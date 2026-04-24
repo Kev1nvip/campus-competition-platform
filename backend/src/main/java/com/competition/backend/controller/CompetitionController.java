@@ -7,6 +7,7 @@ import com.competition.backend.entity.Competition;
 import com.competition.backend.service.CompetitionService;
 import com.competition.backend.vo.CompetitionListVO;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -19,6 +20,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/competitions")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "BearerToken") 
 public class CompetitionController {
 
     private final CompetitionService competitionService;
