@@ -51,11 +51,7 @@ server:
 
 # JWT配置
 jwt:
-<<<<<<< HEAD
-  secret: ${JWT_SECRET:campus-competition-jwt-secret-key-2024}
-=======
   secret: ${JWT_SECRET:campus-competition-jwt-secret-key-2026}
->>>>>>> feature/project-init
   expiration: ${JWT_EXPIRATION:86400}
 
 # 文件上传路径
