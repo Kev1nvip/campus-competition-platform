@@ -7,6 +7,7 @@ import com.competition.backend.dto.IndividualSignupDTO;
 import com.competition.backend.dto.SignupSubmitDTO;
 import com.competition.backend.entity.*;
 import com.competition.backend.repository.*;
+import com.competition.backend.service.RedisService;
 import com.competition.backend.service.SignupService;
 import com.competition.backend.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
@@ -29,8 +30,9 @@ public class SignupServiceImpl implements SignupService {
     private final SysUserRepository userRepository;
     private final ApplyRecordRepository applyRecordRepository;
     private final TeamRepository teamRepository;
+    private final RedisService redisService;
 
-    @Override
+        @Override
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> signUpIndividual(IndividualSignupDTO dto) {
         Long studentId = SecurityUtil.getCurrentUserId();
@@ -38,6 +40,7 @@ public class SignupServiceImpl implements SignupService {
         // 1. 校验竞赛状态
         Competition comp = competitionRepository.findById(dto.getCompetitionId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPETITION_NOT_FOUND, "竞赛不存在"));
+        
         if (!"SIGNING".equals(comp.getStatus())) {
             throw new BusinessException(ErrorCode.COMPETITION_NOT_SIGNING, "竞赛不在报名时间内");
         }
@@ -47,16 +50,62 @@ public class SignupServiceImpl implements SignupService {
             throw new BusinessException(ErrorCode.SIGNUP_DUPLICATE, "您已报名该竞赛");
         }
 
-        // 3. 校验老师
+        // 3. 校验老师角色
         SysUser teacher = userRepository.findById(dto.getTeacherId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND, "老师不存在"));
         if (!"TEACHER".equals(teacher.getRole())) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "选择的用户不是老师");
         }
 
-        // 4. TODO: 并发名额校验 (在 feature/concurrent 实现)
+        // =============================================
+        // 4. 并发名额校验 (Redis Lua 脚本)
+        // =============================================
+        boolean teacherCountInced = false;
+        boolean compQuotaDeced = false;
 
-        // 5. 创建报名草稿
+        try {
+            // 4.1 校验并增加老师带队数
+            if (comp.getMaxTeachQuota() != null) {
+                Long count = redisService.incrTeacherCount(comp.getId(), dto.getTeacherId(), comp.getMaxTeachQuota());
+                if (count == -1) {
+                    throw new BusinessException(ErrorCode.TEACHER_QUOTA_FULL, "该老师带队名额已满");
+                }
+                teacherCountInced = true;
+            }
+
+            // 4.2 校验并扣减竞赛名额
+            if (Boolean.TRUE.equals(comp.getHasQuota())) {
+                Long remaining = redisService.decrCompetitionQuota(comp.getId(), 1);
+                if (remaining == -1) { // 缓存失效，尝试从数据库恢复并重新执行
+                    redisService.initCompetitionQuota(comp.getId(), comp.getMaxQuota() - comp.getEnrolledCount());
+                    remaining = redisService.decrCompetitionQuota(comp.getId(), 1);
+                }
+                if (remaining == -2) {
+                    throw new BusinessException(ErrorCode.COMPETITION_QUOTA_FULL, "竞赛名额已满");
+                }
+                compQuotaDeced = true;
+            }
+
+            // 4.3 数据库乐观锁校验与名额同步
+            // 这里修改 comp 对象的 enrolledCount 会触发 JPA 的 version 检查
+            comp.setEnrolledCount(comp.getEnrolledCount() + 1);
+            competitionRepository.saveAndFlush(comp);
+
+        } catch (org.springframework.orm.ObjectOptimisticLockingFailureException e) {
+            // 乐观锁异常：多个线程同时更新同一行，回滚 Redis
+            if (teacherCountInced) redisService.decrTeacherCount(comp.getId(), dto.getTeacherId());
+            if (compQuotaDeced) redisService.incrCompetitionQuota(comp.getId(), 1);
+            throw new BusinessException(ErrorCode.CONFLICT, "当前报名人数较多，请稍后重试");
+        } catch (Exception e) {
+            // 业务异常（名额满等）：回滚 Redis
+            if (teacherCountInced) redisService.decrTeacherCount(comp.getId(), dto.getTeacherId());
+            if (compQuotaDeced) redisService.incrCompetitionQuota(comp.getId(), 1);
+            throw e;
+        }
+
+        // =============================================
+        // 5. 创建报名草稿与申请记录
+        // =============================================
         IndividualSignup signup = IndividualSignup.builder()
                 .competitionId(dto.getCompetitionId())
                 .studentId(studentId)
@@ -76,11 +125,10 @@ public class SignupServiceImpl implements SignupService {
                 .motivation(dto.getMotivation())
                 .status("PENDING")
                 .build();
-        ApplyRecord savedApply = applyRecordRepository.save(apply);
+        applyRecordRepository.save(apply);
 
         Map<String, Object> result = new HashMap<>();
         result.put("signupId", savedSignup.getId());
-        result.put("applyId", savedApply.getId());
         result.put("status", "DRAFT");
         return result;
     }
