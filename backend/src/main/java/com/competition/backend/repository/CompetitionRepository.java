@@ -5,7 +5,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
+import java.time.OffsetDateTime;
+
 @Repository
 public interface CompetitionRepository extends JpaRepository<Competition, Long>, JpaSpecificationExecutor<Competition> {
-    // JpaSpecificationExecutor 用于支持动态多条件查询
+    
+    boolean existsByTitleAndTypeAndOrganizerAndCompetitionStartAndStatusNot(
+            String title, String type, String organizer, OffsetDateTime competitionStart, String status);
 }

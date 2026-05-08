@@ -36,6 +36,15 @@ public class CompetitionServiceImpl implements CompetitionService {
     public Long createCompetition(CompetitionSaveDTO saveDTO) {
         // 1. 业务逻辑校验
         validateCompetition(saveDTO);
+        
+        // 2. 重复发布校验
+        boolean exists = competitionRepository.existsByTitleAndTypeAndOrganizerAndCompetitionStartAndStatusNot(
+                saveDTO.getTitle(), saveDTO.getType(), saveDTO.getOrganizer(), 
+                saveDTO.getCompetitionStart(), "OFFLINE");
+        if (exists) {
+            throw new BusinessException(ErrorCode.COMPETITION_EXISTS, "该竞赛已发布，请勿重复操作");
+        }
+
         if ("TEAM".equals(saveDTO.getType())) {
             if (saveDTO.getMinTeamSize() == null || saveDTO.getMinTeamSize() < 2) {
                 throw new BusinessException(ErrorCode.PARAM_ERROR, "团队赛最少人数需 >= 2");

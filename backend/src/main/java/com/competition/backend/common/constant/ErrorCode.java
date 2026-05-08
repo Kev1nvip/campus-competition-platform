@@ -33,6 +33,7 @@ public class ErrorCode {
     public static final int COMPETITION_NOT_SIGNING  = 40121;
     public static final int COMPETITION_QUOTA_FULL   = 40122;
     public static final int COMPETITION_NO_PERMISSION = 40123;
+    public static final int COMPETITION_EXISTS        = 40124;
 
     // ================================
     // 报名模块
