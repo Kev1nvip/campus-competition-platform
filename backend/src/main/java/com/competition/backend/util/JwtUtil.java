@@ -75,7 +75,8 @@ public class JwtUtil {
      */
     public Long getUserId(String token) {
         Claims claims = parseToken(token);
-        return claims.get("userId", Long.class);
+        Object userIdObj = claims.get("userId");
+        return userIdObj instanceof Integer ? ((Integer) userIdObj).longValue() : claims.get("userId", Long.class);
     }
 
     /**
