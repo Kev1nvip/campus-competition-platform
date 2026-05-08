@@ -111,6 +111,6 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Result<Void> handleException(Exception e) {
         log.error("系统异常：", e);
-        return Result.fail(ErrorCode.SERVER_ERROR, "服务器内部错误");
+        return Result.fail(ErrorCode.SERVER_ERROR, "服务器内部错误：" + e.getMessage());
     }
 }
