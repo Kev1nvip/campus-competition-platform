@@ -6,7 +6,9 @@ services:
   postgres:
     image: pgvector/pgvector:pg16
     container_name: competition-postgres
+    command: postgres -c 'timezone=PRC'
     environment:
+      TZ: Asia/Shanghai
       POSTGRES_DB: campus_competition
       POSTGRES_USER: competition
       POSTGRES_PASSWORD: competition123
@@ -50,6 +52,7 @@ services:
     image: rabbitmq:3.12-management
     container_name: competition-rabbitmq
     environment:
+      TZ: Asia/Shanghai
       RABBITMQ_DEFAULT_USER: competition
       RABBITMQ_DEFAULT_PASS: competition123
     ports:
