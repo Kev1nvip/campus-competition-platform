@@ -611,7 +611,7 @@ INSERT INTO sys_user (
     status
 ) VALUES (
     'admin',
-    '$2a$10$X.HCHxi1rvMuMWjMdpBnfuEeOVPvqCHiWERDKOBWVqP7lXAlQiAYi',
+    '$2a$10$bsYXw77CVAS.gKAe/tHLH.f9AG9mdSD8d.iPSIYH8MDa.qj7n0XWO',
     '系统管理员',
     'ADMIN',
     '教务处',
