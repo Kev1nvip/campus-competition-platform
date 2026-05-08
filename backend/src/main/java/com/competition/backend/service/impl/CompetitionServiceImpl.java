@@ -34,8 +34,8 @@ public class CompetitionServiceImpl implements CompetitionService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long createCompetition(CompetitionSaveDTO saveDTO) {
-        // 1. 基本校验
-        validateTimeRange(saveDTO);
+        // 1. 业务逻辑校验
+        validateCompetition(saveDTO);
         if ("TEAM".equals(saveDTO.getType())) {
             if (saveDTO.getMinTeamSize() == null || saveDTO.getMinTeamSize() < 2) {
                 throw new BusinessException(ErrorCode.PARAM_ERROR, "团队赛最少人数需 >= 2");
@@ -157,9 +157,17 @@ public class CompetitionServiceImpl implements CompetitionService {
         competitionRepository.save(competition);
     }
 
-    private void validateTimeRange(CompetitionSaveDTO dto) {
+    private void validateCompetition(CompetitionSaveDTO dto) {
+        // 1. 时间范围校验
         if (dto.getSignupEnd().isBefore(dto.getSignupStart())) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "报名截止时间需晚于开始时间");
+        }
+        
+        // 2. 名额限制条件校验
+        if (Boolean.TRUE.equals(dto.getHasQuota())) {
+            if (dto.getMaxQuota() == null || dto.getMaxQuota() < 1) {
+                throw new BusinessException(ErrorCode.PARAM_ERROR, "开启名额限制时，名额上限必须大于等于1");
+            }
         }
     }
 

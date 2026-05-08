@@ -33,7 +33,6 @@ public class CompetitionSaveDTO {
     @NotNull(message = "是否有名额限制不能为空")
     private Boolean hasQuota;
 
-    @Min(value = 1, message = "名额上限最小为1")
     private Integer maxQuota;
 
     private Integer minTeamSize;
