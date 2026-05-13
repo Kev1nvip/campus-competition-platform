@@ -1,10 +1,10 @@
-package com.competition.backend.config;
+﻿package com.competition.backend.config;
 
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
-import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore;
 import org.springframework.beans.factory.annotation.Value;
@@ -31,9 +31,12 @@ public class AiConfig {
     @Value("${spring.datasource.url}")
     private String jdbcUrl;
 
-    /**
-     * 对接硅基流动的聊天模型 (OpenAI 兼容协议)
-     */
+    @Value("${spring.datasource.username}")
+    private String dbUser;
+
+    @Value("${spring.datasource.password}")
+    private String dbPassword;
+
     @Bean
     public ChatLanguageModel chatLanguageModel() {
         return OpenAiChatModel.builder()
@@ -64,8 +67,6 @@ public class AiConfig {
      */
     @Bean
     public EmbeddingStore<TextSegment> embeddingStore() {
-        // 解析数据库连接信息
-        // 示例: jdbc:postgresql://localhost:5432/campus_competition
         String cleanUrl = jdbcUrl.replace("jdbc:postgresql://", "");
         String hostPort = cleanUrl.split("/")[0];
         String host = hostPort.split(":")[0];
@@ -76,10 +77,10 @@ public class AiConfig {
                 .host(host)
                 .port(port)
                 .database(database)
-                .user("competition")
-                .password("competition123")
-                .table("rag_document") // 对应 init.sql 中的表
-                .dimension(1024)       // BGE-M3 维度是 1024
+                .user(dbUser)
+                .password(dbPassword)
+                .table("rag_document")
+                .dimension(1024)
                 .build();
     }
 }

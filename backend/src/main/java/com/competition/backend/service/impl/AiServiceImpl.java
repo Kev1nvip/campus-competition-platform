@@ -1,5 +1,7 @@
-package com.competition.backend.service.impl;
+﻿package com.competition.backend.service.impl;
 
+import com.competition.backend.common.constant.ErrorCode;
+import com.competition.backend.common.exception.BusinessException;
 import com.competition.backend.service.AiAssistant;
 import com.competition.backend.service.AiService;
 import dev.langchain4j.data.segment.TextSegment;
@@ -17,6 +19,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.concurrent.TimeoutException;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -25,7 +29,8 @@ public class AiServiceImpl implements AiService {
     private final ChatLanguageModel chatModel;
     private final EmbeddingModel embeddingModel;
     private final EmbeddingStore<TextSegment> embeddingStore;
-    
+    private final KnowledgeBaseServiceImpl knowledgeBaseService;
+
     private AiAssistant assistant;
 
     @PostConstruct
@@ -53,7 +58,38 @@ public class AiServiceImpl implements AiService {
 
     @Override
     public String recommend(String prompt) {
-        log.info("AI 推荐请求: {}", prompt);
-        return assistant.chat(prompt);
+        String normalizedPrompt = prompt == null ? null : prompt.trim();
+        if (normalizedPrompt == null || normalizedPrompt.isEmpty()) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR, "prompt不能为空");
+        }
+
+        String promptPreview = normalizedPrompt.length() > 80
+                ? normalizedPrompt.substring(0, 80) + "..."
+                : normalizedPrompt;
+        log.info("AI recommend request received, promptPreview={}", promptPreview);
+
+        try {
+            return assistant.chat(normalizedPrompt);
+        } catch (RuntimeException e) {
+            Throwable root = rootCause(e);
+            if (root instanceof TimeoutException) {
+                throw new BusinessException(ErrorCode.AI_UPSTREAM_TIMEOUT, "AI服务响应超时，请稍后重试");
+            }
+            log.error("AI recommend failed", e);
+            throw new BusinessException(ErrorCode.AI_RECOMMEND_FAILED, "AI推荐服务暂时不可用，请稍后重试");
+        }
+    }
+
+    @Override
+    public void triggerKnowledgeRefresh() {
+        knowledgeBaseService.triggerAsyncRefresh();
+    }
+
+    private Throwable rootCause(Throwable throwable) {
+        Throwable current = throwable;
+        while (current.getCause() != null && current.getCause() != current) {
+            current = current.getCause();
+        }
+        return current;
     }
 }

@@ -9,4 +9,9 @@ public interface AiService {
      * @return AI 生成的推荐建议
      */
     String recommend(String prompt);
+
+    /**
+     * 触发异步知识库刷新任务
+     */
+    void triggerKnowledgeRefresh();
 }

@@ -72,4 +72,12 @@ public class ErrorCode {
     public static final int AWARD_NOT_FOUND            = 40170;
     public static final int AWARD_DUPLICATE            = 40171;
     public static final int AWARD_SIGNUP_NOT_APPROVED  = 40172;
+
+    // ================================
+    // AI 模块
+    // ================================
+    public static final int AI_RECOMMEND_FAILED       = 40200;
+    public static final int AI_UPSTREAM_TIMEOUT       = 40201;
+    public static final int AI_KNOWLEDGE_REFRESHING   = 40202;
+    public static final int AI_KNOWLEDGE_REFRESH_FAIL = 40203;
 }
