@@ -1,4 +1,4 @@
-﻿package com.competition.backend.config;
+package com.competition.backend.config;
 
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -36,6 +36,9 @@ public class AiConfig {
 
     @Value("${spring.datasource.password}")
     private String dbPassword;
+
+    @Value("${ai.vector.table:rag_document}")
+    private String vectorTable;
 
     @Bean
     public ChatLanguageModel chatLanguageModel() {
@@ -79,7 +82,7 @@ public class AiConfig {
                 .database(database)
                 .user(dbUser)
                 .password(dbPassword)
-                .table("rag_document")
+                .table(vectorTable)
                 .dimension(1024)
                 .build();
     }

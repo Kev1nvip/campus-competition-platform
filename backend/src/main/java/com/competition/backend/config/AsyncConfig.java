@@ -1,4 +1,4 @@
-﻿package com.competition.backend.config;
+package com.competition.backend.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

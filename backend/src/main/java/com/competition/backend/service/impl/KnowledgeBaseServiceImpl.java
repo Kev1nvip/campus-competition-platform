@@ -1,4 +1,4 @@
-﻿package com.competition.backend.service.impl;
+package com.competition.backend.service.impl;
 
 import com.competition.backend.common.constant.ErrorCode;
 import com.competition.backend.common.exception.BusinessException;
@@ -13,6 +13,8 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -27,11 +29,15 @@ public class KnowledgeBaseServiceImpl {
     private final CompetitionRepository competitionRepository;
     private final EmbeddingModel embeddingModel;
     private final EmbeddingStore<TextSegment> embeddingStore;
+    private final JdbcTemplate jdbcTemplate;
 
     @Qualifier("aiTaskExecutor")
     private final Executor aiTaskExecutor;
 
     private final AtomicBoolean refreshing = new AtomicBoolean(false);
+
+    @Value("${ai.vector.table:rag_document}")
+    private String vectorTableName;
 
     public void triggerAsyncRefresh() {
         if (!refreshing.compareAndSet(false, true)) {
@@ -58,10 +64,8 @@ public class KnowledgeBaseServiceImpl {
 
     private void refreshKnowledgeBaseInternal() {
         List<Competition> competitions = competitionRepository.findAll();
+        clearVectorTable();
 
-        // Rebuild from scratch to keep refresh idempotent.
-        embeddingStore.removeAll();
-        // 简单的分块逻辑：每 500 字一块，重叠 50 字
         DocumentSplitter splitter = DocumentSplitters.recursive(500, 50);
         for (Competition comp : competitions) {
             String text = String.format(
@@ -82,6 +86,13 @@ public class KnowledgeBaseServiceImpl {
             log.info("Refreshing competition vector, title={}, segments={}", comp.getTitle(), segments.size());
             embeddingStore.addAll(embeddingModel.embedAll(segments).content(), segments);
         }
+    }
+
+    private void clearVectorTable() {
+        if (!vectorTableName.matches("^[a-zA-Z0-9_]+$")) {
+            throw new BusinessException(ErrorCode.AI_KNOWLEDGE_REFRESH_FAIL, "向量表配置非法");
+        }
+        jdbcTemplate.execute("TRUNCATE TABLE " + vectorTableName);
     }
 
     private String safe(String value) {

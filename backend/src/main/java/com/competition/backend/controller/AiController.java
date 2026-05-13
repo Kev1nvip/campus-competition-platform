@@ -1,9 +1,8 @@
-﻿package com.competition.backend.controller;
+package com.competition.backend.controller;
 
 import com.competition.backend.common.result.Result;
 import com.competition.backend.dto.AiRecommendRequest;
 import com.competition.backend.service.AiService;
-import com.competition.backend.service.impl.KnowledgeBaseServiceImpl;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
