@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @Tag(name = "AI 推荐模块")
-@RestController
+//@RestController
 @RequestMapping("/api/v1/ai")
 @RequiredArgsConstructor
 public class AiController {
