@@ -262,9 +262,46 @@
 
 ## 三、 报名模块 (Signup)
 
-### 3.1 个人赛报名草稿 (POST)
-- **URL**: `/api/v1/signups/individual`
-- **最小成功示例**:
+> **测试策略说明**
+>
+> 报名模块采用与前两部分一致的“双层测试”策略，覆盖个人赛与团队赛的核心流程、状态机约束和并发回滚逻辑：
+>
+> | 层次 | 方式 | 说明 |
+> |------|------|------|
+> | **Service 单元测试** | JUnit 5 + Mockito（含静态方法 Mock） | 隔离 Repository/RedisService/SecurityUtil，验证业务分支与回滚逻辑 |
+> | **Controller 集成测试** | `@WebMvcTest` + MockMvc + `@MockBean` | 验证 HTTP 路由、参数校验、JSON 响应结构与业务异常映射 |
+>
+> **注意**：业务异常通常返回 HTTP 200 + 业务 `code`；参数校验失败返回 HTTP 400 + `code=40000`。
+
+---
+
+### 3.1 个人赛报名草稿 (POST `/api/v1/signups/individual`)
+
+#### 接口约束（来自 `IndividualSignupDTO` + 业务规则）
+
+| 字段 | 约束 |
+|------|------|
+| `competitionId` | 非空，且竞赛必须存在 |
+| `teacherId` | 非空，且必须是 `TEACHER` 角色 |
+| `competition.status` | 必须为 `SIGNING` |
+| 重复报名 | 同一学生同一竞赛不允许重复创建 |
+| 配额/教师名额 | 受 Redis 并发控制，满额时报业务异常 |
+
+#### 测试用例
+
+| # | 场景 | 输入要点 | 预期 |
+|---|------|---------|------|
+| 3.1.1 | **个人赛报名成功** | 合法 `competitionId/teacherId`，竞赛在报名中，名额充足 | HTTP 200，`code=0`，返回 `signupId` 与 `status=DRAFT` |
+| 3.1.2 | 竞赛不存在 | `competitionId` 不存在 | `code=40120` |
+| 3.1.3 | 竞赛不在报名期 | `status!=SIGNING` | `code=40121` |
+| 3.1.4 | 重复报名 | 同一学生重复报名同一竞赛 | `code=40130` |
+| 3.1.5 | 指导老师不存在 | `teacherId` 不存在 | `code=40105` |
+| 3.1.6 | 指导老师角色非法 | teacher 角色不是 `TEACHER` | `code=40000` |
+| 3.1.7 | 老师带队名额已满 | Redis 返回教师额度满 | `code=40133` |
+| 3.1.8 | 竞赛名额已满 | Redis 返回竞赛配额满 | `code=40122` |
+| 3.1.9 | 请求体缺必填字段 | `competitionId` 或 `teacherId` 为空 | HTTP 400，`code=40000` |
+
+**最小成功示例（个人赛报名草稿）**：
 ```json
 {
   "competitionId": 1,
@@ -274,19 +311,96 @@
 }
 ```
 
-### 3.2 提交个人赛审核 (POST)
-- **URL**: `/api/v1/signups/individual/{id}/submit`
-- **Payload**: `{"attachmentUrl": "http://oss.com/cert.pdf"}`
+---
 
-### 3.3 我的个人赛记录 (GET)
-- **URL**: `/api/v1/signups/individual/my?status=DRAFT`
+### 3.2 提交个人赛审核 (POST `/api/v1/signups/individual/{id}/submit`)
 
-### 3.4 创建团队赛草稿 (POST)
-- **URL**: `/api/v1/signups/team`
-- **Payload**: `{"teamId": 101}`
+#### 接口约束（业务规则）
 
-### 3.5 提交团队赛审核 (POST)
-- **URL**: `/api/v1/signups/team/{id}/submit`
+| 字段 | 约束 |
+|------|------|
+| `id` | 报名记录必须存在 |
+| 当前用户 | 必须是报名学生本人 |
+| `signup.status` | 仅 `DRAFT` / `REJECTED` 允许提交 |
+| 指导申请状态 | `ApplyRecord.status` 必须为 `APPROVED` |
+
+#### 测试用例
+
+| # | 场景 | 输入要点 | 预期 |
+|---|------|---------|------|
+| 3.2.1 | **提交成功** | 本人提交，状态合法，指导申请已通过 | HTTP 200，`code=0`，状态变为 `PENDING` |
+| 3.2.2 | 报名记录不存在 | `id` 不存在 | `code=40131` |
+| 3.2.3 | 状态不允许提交 | 例如当前状态为 `PENDING` | `code=40132` |
+| 3.2.4 | 未找到指导申请 | 缺失 `INDIVIDUAL_GUIDE` 记录 | `code=40000` |
+| 3.2.5 | 指导申请未通过 | 申请状态非 `APPROVED` | `code=40000` |
+
+---
+
+### 3.3 我的个人赛记录 (GET `/api/v1/signups/individual/my`)
+
+#### 请求参数
+
+| 字段 | 说明 |
+|------|------|
+| `page` | 页码，默认 `1` |
+| `size` | 每页条数，默认 `10` |
+| `status` | 可选过滤（如 `DRAFT`） |
+
+#### 测试用例
+
+| # | 场景 | 输入 | 预期 |
+|---|------|------|------|
+| 3.3.1 | **分页查询成功（无状态过滤）** | `page=1,size=10` | HTTP 200，`code=0`，返回 `PageVO` |
+| 3.3.2 | 分页查询成功（按状态过滤） | `status=DRAFT` | HTTP 200，`code=0`，仅返回对应状态记录 |
+
+---
+
+### 3.4 创建团队赛报名草稿 (POST `/api/v1/signups/team`)
+
+#### 接口约束（业务规则）
+
+| 字段 | 约束 |
+|------|------|
+| `teamId` | 队伍必须存在 |
+| 当前用户 | 必须是队长本人 |
+| `teacherConfirmed` | 必须为 `true` |
+| 重复报名 | 同一队伍同一竞赛仅允许一条报名记录 |
+
+#### 测试用例
+
+| # | 场景 | 输入要点 | 预期 |
+|---|------|---------|------|
+| 3.4.1 | **团队赛草稿创建成功** | 队伍存在、队长本人、老师已确认 | HTTP 200，`code=0`，返回 `signupId` 与 `status=DRAFT` |
+| 3.4.2 | 队伍不存在 | `teamId` 不存在 | `code=40140` |
+| 3.4.3 | 指导老师未确认 | `teacherConfirmed=false` | `code=40145` |
+| 3.4.4 | 重复创建草稿 | 已存在 team signup | `code=40130` |
+
+**最小成功示例（团队赛报名草稿）**：
+```json
+{
+  "teamId": 101
+}
+```
+
+---
+
+### 3.5 提交团队赛审核 (POST `/api/v1/signups/team/{id}/submit`)
+
+#### 接口约束（业务规则）
+
+| 字段 | 约束 |
+|------|------|
+| `id` | 团队报名记录必须存在 |
+| 当前用户 | 必须是该队伍队长 |
+| 队伍人数 | `memberCount >= competition.minTeamSize` |
+
+#### 测试用例
+
+| # | 场景 | 输入要点 | 预期 |
+|---|------|---------|------|
+| 3.5.1 | **提交成功** | 报名记录存在，队长本人，队伍人数达标 | HTTP 200，`code=0`，报名状态变 `PENDING`，队伍状态变 `SUBMITTED` |
+| 3.5.2 | 报名记录不存在 | `id` 不存在 | `code=40131` |
+| 3.5.3 | 队伍人数不足 | `memberCount < minTeamSize` | `code=40000` |
 
 ---
 
