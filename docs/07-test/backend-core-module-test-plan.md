@@ -135,17 +135,79 @@
 
 ## 二、 竞赛模块 (Competition)
 
-### 2.1 获取竞赛分页列表 (GET)
-- **URL**: `/api/v1/competitions?page=1&size=10&type=INDIVIDUAL&status=SIGNING`
-- **预期结果**: 返回 `PageVO` 结构，包含 `list` 数组。
+> **测试策略说明**
+>
+> 竞赛模块采用与认证模块一致的“双层测试”策略，覆盖正常流程与异常边界：
+>
+> | 层次 | 方式 | 说明 |
+> |------|------|------|
+> | **Service 单元测试** | JUnit 5 + Mockito（含静态方法 Mock） | 隔离 Repository 与安全上下文，验证业务分支、状态流转与字段更新 |
+> | **Controller 集成测试** | `@WebMvcTest` + MockMvc + `@MockBean` | 验证 HTTP 路由、参数绑定、JSON 序列化与异常返回结构 |
+>
+> **注意**：成功返回 `code=0`；业务异常通常由 `BusinessException` 返回 HTTP 200 + 业务 `code`；参数校验失败返回 HTTP 400 + `code=40000`。
 
-### 2.2 获取竞赛详情 (GET)
-- **URL**: `/api/v1/competitions/{id}`
-- **预期结果**: 返回竞赛完整字段（标题、名额、起止时间等）。
+---
 
-### 2.3 发布竞赛 (POST) - [需 ADMIN 权限]
-- **URL**: `/api/v1/competitions`
-- **最小成功示例 (个人赛)**:
+### 2.1 获取竞赛分页列表 (GET `/api/v1/competitions`)
+
+#### 请求参数
+
+| 字段 | 说明 |
+|------|------|
+| `page` | 页码，默认 `1` |
+| `size` | 每页条数，默认 `10` |
+| `status` | 可选过滤（如 `SIGNING`） |
+| `type` | 可选过滤（`INDIVIDUAL` / `TEAM`） |
+| `keyword` | 可选标题关键字 |
+
+#### 测试用例
+
+| # | 场景 | 输入 | 预期 |
+|---|------|------|------|
+| 2.1.1 | **正常分页查询** | `page=1,size=10,status=SIGNING,type=INDIVIDUAL` | HTTP 200，`code=0`，返回 `PageVO` 结构与 `list` |
+| 2.1.2 | 默认分页参数 | 不传 `page,size` | HTTP 200，`code=0`，返回默认分页结果 |
+
+---
+
+### 2.2 获取竞赛详情 (GET `/api/v1/competitions/{id}`)
+
+#### 测试用例
+
+| # | 场景 | 输入 | 预期 |
+|---|------|------|------|
+| 2.2.1 | **查询存在的竞赛** | `id=1` | HTTP 200，`code=0`，`data` 为竞赛完整对象 |
+| 2.2.2 | 竞赛不存在 | `id=9999` | HTTP 200，`code=40400`，`message=竞赛不存在` |
+| 2.2.3 | 已下架且非管理员非创建人访问（Service） | `status=OFFLINE` | 抛业务异常，`code=40400` |
+
+---
+
+### 2.3 发布竞赛 (POST `/api/v1/competitions`)
+
+#### 接口约束（来自 `CompetitionSaveDTO` + 业务规则）
+
+| 字段 | 约束 |
+|------|------|
+| `title` | 非空 |
+| `type` | 非空（`INDIVIDUAL` / `TEAM`） |
+| `organizer` | 非空 |
+| `signupStart` | 非空 |
+| `signupEnd` | 非空，且必须晚于 `signupStart` |
+| `hasQuota` | 非空 |
+| `maxQuota` | 当 `hasQuota=true` 时必须 `>=1` |
+| `minTeamSize` | 当 `type=TEAM` 时必须 `>=2` |
+
+#### 测试用例
+
+| # | 场景 | 输入要点 | 预期 |
+|---|------|---------|------|
+| 2.3.1 | **个人赛正常发布** | 合法字段 | HTTP 200，`code=0`，返回新建 `id` |
+| 2.3.2 | 重复发布 | 标题/类型/主办方/开始时间重复且未下架 | `code=40124` |
+| 2.3.3 | 报名时间非法 | `signupEnd < signupStart` | `code=40000` |
+| 2.3.4 | 配额非法 | `hasQuota=true` 且 `maxQuota` 缺失或 `<1` | `code=40000` |
+| 2.3.5 | 团队赛最小人数非法 | `type=TEAM,minTeamSize<2` | `code=40000` |
+| 2.3.6 | 请求体缺必填字段 | 例如 `title` 为空 | HTTP 400，`code=40000` |
+
+**最小成功示例（个人赛）**：
 ```json
 {
   "title": "蓝桥杯全国软件大赛",
@@ -153,17 +215,48 @@
   "organizer": "工信部",
   "signupStart": "2026-05-01T00:00:00+08:00",
   "signupEnd": "2026-06-01T00:00:00+08:00",
+  "competitionStart": "2026-06-15T00:00:00+08:00",
+  "competitionEnd": "2026-06-30T00:00:00+08:00",
   "hasQuota": true,
   "maxQuota": 100,
-  "status": "SIGNING",
   "description": "算法大赛"
 }
 ```
-- **预期结果**: 数据库 `competition` 表新增记录，Redis 初始化名额。
 
-### 2.4 修改竞赛 (PUT) - [需 ADMIN 权限]
-- **URL**: `/api/v1/competitions/{id}`
-- **示例**: 修改标题或调整名额。
+---
+
+### 2.4 修改竞赛 (PUT `/api/v1/competitions/{id}`)
+
+#### 测试用例
+
+| # | 场景 | 输入要点 | 预期 |
+|---|------|---------|------|
+| 2.4.1 | **正常修改** | 存在竞赛 + 合法字段 | HTTP 200，`code=0` |
+| 2.4.2 | 竞赛不存在 | `id` 不存在 | `code=40400` |
+| 2.4.3 | 已结束竞赛不可编辑 | `status=FINISHED` | `code=40132` |
+| 2.4.4 | 请求体校验失败 | 必填字段缺失 | HTTP 400，`code=40000` |
+
+---
+
+### 2.5 变更竞赛状态 (PATCH `/api/v1/competitions/{id}/status`)
+
+#### 请求体示例
+```json
+{"action":"OFFLINE"}
+```
+
+或
+
+```json
+{"action":"RESTORE"}
+```
+
+#### 测试用例
+
+| # | 场景 | 输入 | 预期 |
+|---|------|------|------|
+| 2.5.1 | 下架竞赛 | `action=OFFLINE` | HTTP 200，`code=0`，状态变为 `OFFLINE` |
+| 2.5.2 | 恢复竞赛 | `action=RESTORE` | HTTP 200，`code=0`，按当前时间恢复为计算状态（如 `SIGNING`） |
 
 ---
 
