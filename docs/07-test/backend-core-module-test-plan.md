@@ -406,19 +406,72 @@
 
 ## 四、 AI 推荐模块 (AI)
 
-### 4.1 智能推荐 (POST)
-- **URL**: `/api/v1/ai/recommend`
-- **最小成功示例**:
+> **测试策略说明**
+>
+> AI 推荐模块依赖外部 LLM 服务（硅基流动）和 PGVector 向量数据库，测试时需完全隔离这些外部依赖：
+>
+> | 层次 | 方式 | 说明 |
+> |------|------|------|
+> | **Service 单元测试** | JUnit 5 + Mockito | Mock `AiAssistant`，验证 `recommend()` 方法的调用链与返回值传递 |
+> | **Controller 集成测试** | `@WebMvcTest` + MockMvc + `@MockBean` | Mock `AiService` 与 `KnowledgeBaseServiceImpl`，验证 HTTP 路由、请求体解析、响应结构 |
+>
+> **注意**：`AiController` 接收 `Map<String, String>` 请求体，取 `prompt` 字段传入 Service；`KnowledgeBaseServiceImpl` 的 `refreshKnowledgeBase()` 为 void 方法，测试时验证其被调用即可。
+
+---
+
+### 4.1 智能推荐 (POST `/api/v1/ai/recommend`)
+
+#### 请求体
+
+| 字段 | 约束 |
+|------|------|
+| `prompt` | 用户描述文本，Controller 层直接从 Map 中取值，无 Bean Validation |
+
+#### 测试用例
+
+| # | 场景 | 输入要点 | 预期 HTTP 状态 | 预期响应 |
+|---|------|---------|---------------|---------|
+| 4.1.1 | **正常推荐请求** | `{"prompt": "我是大一学生，擅长 Python 和数学建模，请推荐适合我的竞赛"}` | 200 | `{"code": 0, "data": "<AI 生成的 Markdown 文本>"}` |
+| 4.1.2 | prompt 为空字符串 | `{"prompt": ""}` | 200 | `{"code": 0, "data": "<AI 返回内容>"}` （Controller 不校验，透传给 Service） |
+| 4.1.3 | 请求体缺少 prompt 字段 | `{}` | 200 | `{"code": 0, "data": null}` （`map.get("prompt")` 返回 null，透传给 Service） |
+
+**最小成功示例**：
 ```json
 {
   "prompt": "我是大一学生，擅长 Python 和数学建模，请推荐适合我的竞赛"
 }
 ```
-- **预期结果**: 返回 AI 生成的 Markdown 文本建议。
 
-### 4.2 手动刷新知识库 (POST)
-- **URL**: `/api/v1/ai/knowledge/refresh`
-- **预期结果**: 返回 "知识库刷新任务已启动"，异步清理并重构向量索引。
+**预期成功响应结构**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": "## 推荐竞赛\n\n根据您的背景，推荐以下竞赛：..."
+}
+```
+
+---
+
+### 4.2 手动刷新知识库 (POST `/api/v1/ai/knowledge/refresh`)
+
+#### 测试用例
+
+| # | 场景 | 输入要点 | 预期 HTTP 状态 | 预期响应 |
+|---|------|---------|---------------|---------|
+| 4.2.1 | **正常刷新请求** | 无请求体 | 200 | `{"code": 0, "data": "知识库刷新任务已启动"}` |
+| 4.2.2 | 验证 Service 方法被调用 | 无请求体 | 200 | `knowledgeBaseService.refreshKnowledgeBase()` 被调用一次 |
+
+---
+
+### 4.3 Service 层单元测试
+
+#### AiServiceImpl 测试用例
+
+| # | 场景 | Mock 行为 | 预期 |
+|---|------|----------|------|
+| 4.3.1 | **recommend 正常返回** | `assistant.chat(prompt)` 返回固定字符串 | `aiService.recommend(prompt)` 返回相同字符串 |
+| 4.3.2 | prompt 为 null | `assistant.chat(null)` 返回空字符串 | `aiService.recommend(null)` 返回空字符串 |
 
 ---
 
