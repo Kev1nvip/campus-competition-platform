@@ -1,12 +1,3 @@
-<<<<<<< HEAD
-<script setup lang="ts">
-import HelloWorld from './components/HelloWorld.vue'
-</script>
-
-<template>
-  <HelloWorld />
-</template>
-=======
 <!--
   组件：根组件
   说明：应用顶层容器，使用router-view渲染页面
@@ -29,4 +20,3 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 </style>
->>>>>>> feature/frontend-init
