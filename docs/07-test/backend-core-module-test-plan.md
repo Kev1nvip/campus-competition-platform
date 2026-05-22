@@ -524,6 +524,43 @@
 
 ---
 
-## 六、 并发控制压测 (JMeter)
-- **压测点 1 (名额扣减)**: 并发调用 `/api/v1/signups/individual`，观察 Redis 名额是否出现负数。
-- **压测点 2 (乐观锁)**: 同时并发更新同一条竞赛记录，验证是否有请求报 `ObjectOptimisticLockingFailureException`。
+## 六、 并发控制测试
+
+> **测试策略说明**
+>
+> 原方案为 JMeter 手工压测，改为自动化单元测试，通过 `CountDownLatch` + `ExecutorService` 模拟多线程并发，在不依赖外部环境的前提下验证并发控制逻辑的正确性。
+>
+> | 层次 | 方式 | 说明 |
+> |------|------|------|
+> | **Lua 脚本逻辑测试** | JUnit 5 + Mockito | Mock `RedisTemplate`，直接测试 `RedisService` 的 Lua 脚本返回值语义（-1/-2/正常扣减） |
+> | **并发名额扣减测试** | JUnit 5 + `CountDownLatch` + `ExecutorService` | 多线程并发调用 `signUpIndividual()`，Mock Redis 返回 -2（名额不足），验证超额线程抛 `COMPETITION_QUOTA_FULL` 且 Redis 回滚被调用 |
+> | **乐观锁冲突测试** | JUnit 5 + Mockito | Mock `competitionRepository.saveAndFlush()` 抛 `ObjectOptimisticLockingFailureException`，验证 Service 捕获后抛 `CONFLICT` 业务异常并回滚 Redis |
+
+---
+
+### 6.1 Redis Lua 脚本语义测试（`RedisService`）
+
+| # | 场景 | Mock `redisTemplate.execute()` 返回值 | 预期 `decrCompetitionQuota()` 返回 |
+|---|------|--------------------------------------|----------------------------------|
+| 6.1.1 | **名额充足，正常扣减** | `5L`（剩余 5） | `5L` |
+| 6.1.2 | **名额不足** | `-2L` | `-2L` |
+| 6.1.3 | **缓存 Key 不存在** | `-1L` | `-1L` |
+| 6.1.4 | 老师带队未超限 | `1L`（当前带队数） | `1L` |
+| 6.1.5 | 老师带队已满 | `-1L` | `-1L` |
+
+---
+
+### 6.2 并发名额扣减测试（`SignupServiceImpl`）
+
+| # | 场景 | 调用次数 | Mock 行为 | 预期 |
+|---|------|---------|----------|------|
+| 6.2.1 | **名额不足时所有请求均被拒绝** | 3 次串行 | `decrCompetitionQuota()` 始终返回 `-2L` | 所有调用抛 `BusinessException(COMPETITION_QUOTA_FULL)`；`incrCompetitionQuota()` **不被调用**（`-2` 表示 Lua 脚本未执行 `decrby`，名额未实际扣减，无需回滚） |
+| 6.2.2 | **首次成功，后续名额不足被拒绝** | 3 次串行 | 第 1 次返回 `8L`（成功），第 2、3 次返回 `-2L` | 1 次成功，2 次抛 `COMPETITION_QUOTA_FULL`；`incrCompetitionQuota()` **不被调用**（失败路径 `compQuotaDeced=false`） |
+
+---
+
+### 6.3 乐观锁冲突测试（`SignupServiceImpl`）
+
+| # | 场景 | Mock 行为 | 预期 |
+|---|------|----------|------|
+| 6.3.1 | **乐观锁冲突时抛业务异常并回滚 Redis** | `competitionRepository.saveAndFlush()` 抛 `ObjectOptimisticLockingFailureException` | 抛 `BusinessException(CONFLICT, "当前报名人数较多，请稍后重试")`，`incrCompetitionQuota()` 被调用 1 次（回滚名额），`decrTeacherCount()` 被调用 1 次（回滚老师计数） |
