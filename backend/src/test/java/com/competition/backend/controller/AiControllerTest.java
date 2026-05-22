@@ -2,8 +2,8 @@ package com.competition.backend.controller;
 
 import com.competition.backend.common.exception.GlobalExceptionHandler;
 import com.competition.backend.common.security.JwtAuthenticationFilter;
+import com.competition.backend.dto.AiRecommendRequest;
 import com.competition.backend.service.AiService;
-import com.competition.backend.service.impl.KnowledgeBaseServiceImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -19,7 +19,6 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Map;
 
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willDoNothing;
@@ -46,9 +45,6 @@ class AiControllerTest {
     private AiService aiService;
 
     @MockBean
-    private KnowledgeBaseServiceImpl knowledgeBaseService;
-
-    @MockBean
     private JwtAuthenticationFilter jwtAuthenticationFilter;
 
     // ------------------------------------------------------------------ 4.1
@@ -63,38 +59,52 @@ class AiControllerTest {
             given(aiService.recommend("我是大一学生，擅长 Python 和数学建模，请推荐适合我的竞赛"))
                     .willReturn(aiResponse);
 
+            AiRecommendRequest req = new AiRecommendRequest();
+            req.setPrompt("我是大一学生，擅长 Python 和数学建模，请推荐适合我的竞赛");
+
             mockMvc.perform(post("/api/v1/ai/recommend")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(
-                                    Map.of("prompt", "我是大一学生，擅长 Python 和数学建模，请推荐适合我的竞赛"))))
+                            .content(objectMapper.writeValueAsString(req)))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value(0))
                     .andExpect(jsonPath("$.data").value(aiResponse));
         }
 
         @Test
-        @DisplayName("4.1.2 prompt 为空字符串 - Controller 透传，返回 AI 内容")
-        void recommend_emptyPrompt() throws Exception {
-            given(aiService.recommend("")).willReturn("请提供更多信息");
-
+        @DisplayName("4.1.2 prompt 为空字符串 - @NotBlank 拦截，返回 400")
+        void recommend_emptyPrompt_returns400() throws Exception {
             mockMvc.perform(post("/api/v1/ai/recommend")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"prompt\":\"\"}"))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.code").value(0))
-                    .andExpect(jsonPath("$.data").value("请提供更多信息"));
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value(40000));
+
+            then(aiService).shouldHaveNoInteractions();
         }
 
         @Test
-        @DisplayName("4.1.3 请求体缺少 prompt 字段 - map.get 返回 null，透传给 Service")
-        void recommend_missingPromptKey() throws Exception {
-            given(aiService.recommend(isNull())).willReturn(null);
-
+        @DisplayName("4.1.3 请求体缺少 prompt 字段 - @NotBlank 拦截，返回 400")
+        void recommend_missingPromptKey_returns400() throws Exception {
             mockMvc.perform(post("/api/v1/ai/recommend")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{}"))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.code").value(0));
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value(40000));
+
+            then(aiService).shouldHaveNoInteractions();
+        }
+
+        @Test
+        @DisplayName("4.1.4 prompt 超过 1000 字符 - @Size 拦截，返回 400")
+        void recommend_promptTooLong_returns400() throws Exception {
+            String longPrompt = "a".repeat(1001);
+            mockMvc.perform(post("/api/v1/ai/recommend")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("prompt", longPrompt))))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value(40000));
+
+            then(aiService).shouldHaveNoInteractions();
         }
     }
 
@@ -106,7 +116,7 @@ class AiControllerTest {
         @Test
         @DisplayName("4.2.1 正常刷新请求 - 返回启动提示")
         void refresh_success() throws Exception {
-            willDoNothing().given(knowledgeBaseService).refreshKnowledgeBase();
+            willDoNothing().given(aiService).triggerKnowledgeRefresh();
 
             mockMvc.perform(post("/api/v1/ai/knowledge/refresh")
                             .contentType(MediaType.APPLICATION_JSON))
@@ -116,15 +126,15 @@ class AiControllerTest {
         }
 
         @Test
-        @DisplayName("4.2.2 验证 refreshKnowledgeBase() 被调用一次")
+        @DisplayName("4.2.2 验证 triggerKnowledgeRefresh() 被调用一次")
         void refresh_serviceInvoked() throws Exception {
-            willDoNothing().given(knowledgeBaseService).refreshKnowledgeBase();
+            willDoNothing().given(aiService).triggerKnowledgeRefresh();
 
             mockMvc.perform(post("/api/v1/ai/knowledge/refresh")
                             .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk());
 
-            then(knowledgeBaseService).should().refreshKnowledgeBase();
+            then(aiService).should().triggerKnowledgeRefresh();
         }
     }
 }

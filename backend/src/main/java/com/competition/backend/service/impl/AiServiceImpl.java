@@ -1,4 +1,4 @@
-﻿package com.competition.backend.service.impl;
+package com.competition.backend.service.impl;
 
 import com.competition.backend.common.constant.ErrorCode;
 import com.competition.backend.common.exception.BusinessException;
