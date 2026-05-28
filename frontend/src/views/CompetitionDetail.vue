@@ -370,7 +370,7 @@ const handleBack = () => {
  */
 const handleSignup = () => {
   if (!detail.value || !canSignup(detail.value)) return
-  alert('报名功能开发中...')
+  router.push(`/competition/${detail.value.id}/signup`)
 }
 
 // ================================
