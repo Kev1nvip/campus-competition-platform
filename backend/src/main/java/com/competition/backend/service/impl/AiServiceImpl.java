@@ -22,7 +22,7 @@ import org.springframework.stereotype.Service;
 import java.util.concurrent.TimeoutException;
 
 @Slf4j
-//@Service
+@Service
 @RequiredArgsConstructor
 public class AiServiceImpl implements AiService {
 
