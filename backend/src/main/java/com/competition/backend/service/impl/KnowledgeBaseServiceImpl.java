@@ -22,7 +22,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
-@Service
+//@Service
 @RequiredArgsConstructor
 public class KnowledgeBaseServiceImpl {
 
