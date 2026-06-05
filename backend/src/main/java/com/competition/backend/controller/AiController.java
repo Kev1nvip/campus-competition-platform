@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "AI 推荐模块")
-//@RestController
+@RestController
 @RequestMapping("/api/v1/ai")
 @RequiredArgsConstructor
 @SecurityRequirement(name = "BearerToken")
