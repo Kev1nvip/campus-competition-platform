@@ -54,3 +54,12 @@ export interface ApiResponse<T = any> {
   message: string
   data: T
 }
+
+// 分页返回格式
+export interface PageVO<T> {
+  list: T[]
+  total: number
+  page: number
+  size: number
+  totalPages: number
+}

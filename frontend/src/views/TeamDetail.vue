@@ -129,22 +129,44 @@
         </div>
         <div class="modal-body">
           <div class="form-item">
-            <label class="form-label">学号 <span class="required">*</span></label>
+            <label class="form-label">搜索学号或姓名 <span class="required">*</span></label>
             <input
-              v-model="inviteForm.studentNo"
+              v-model="inviteForm.keyword"
               type="text"
               class="form-input"
-              placeholder="请输入队友学号"
-              maxlength="20"
+              placeholder="请输入学号或姓名"
+              maxlength="50"
+              @input="handleSearchStudents"
             />
-            <span v-if="inviteErrors.studentNo" class="error-message">{{ inviteErrors.studentNo }}</span>
+            <span v-if="inviteErrors.keyword" class="error-message">{{ inviteErrors.keyword }}</span>
           </div>
+          
+          <!-- 搜索结果 -->
+          <div v-if="searchResults.length > 0" class="search-results">
+            <div 
+              v-for="student in searchResults" 
+              :key="student.userId"
+              class="search-item"
+              :class="{ selected: inviteForm.selectedStudent?.userId === student.userId }"
+              @click="selectStudent(student)"
+            >
+              <div class="search-item-avatar">{{ student.realName.charAt(0) }}</div>
+              <div class="search-item-info">
+                <div class="search-item-name">{{ student.realName }}</div>
+                <div class="search-item-meta">{{ student.studentNo }} · {{ student.department }}</div>
+              </div>
+              <div v-if="inviteForm.selectedStudent?.userId === student.userId" class="check-icon">✓</div>
+            </div>
+          </div>
+          
+          <div v-if="isSearching" class="search-loading">搜索中...</div>
+          <div v-if="!isSearching && inviteForm.keyword && searchResults.length === 0" class="search-empty">未找到匹配的学生</div>
         </div>
         <div class="modal-footer">
           <button class="btn-cancel" @click="showInviteModal = false">取消</button>
           <button 
             class="btn-confirm"
-            :disabled="isInviting || !inviteForm.studentNo.trim()"
+            :disabled="isInviting || !inviteForm.selectedStudent"
             @click="handleInviteMember"
           >
             {{ isInviting ? '邀请中...' : '发送邀请' }}
@@ -159,8 +181,10 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { teamApi } from '@/api/team'
+import { userApi } from '@/api/user'
 import type { TeamDetailVO, TeamMemberVO, TeamStatus } from '@/types/team'
 import { teamStatusMap } from '@/types/team'
+import type { StudentInfo } from '@/api/user'
 
 // ================================
 // 路由
@@ -193,22 +217,25 @@ const teamDetail = ref<TeamDetailVO>({
 const isLoading = ref(false)
 const showInviteModal = ref(false)
 const isInviting = ref(false)
+const isSearching = ref(false)
+const currentUserId = ref(1)
 
 // 邀请表单
 const inviteForm = ref({
-  studentNo: ''
+  keyword: '',
+  selectedStudent: null as StudentInfo | null
 })
 
 const inviteErrors = ref({
-  studentNo: ''
+  keyword: ''
 })
+
+// 搜索结果
+const searchResults = ref<StudentInfo[]>([])
 
 // ================================
 // 计算属性
 // ================================
-// 获取当前用户ID（从全局状态获取，这里假设当前用户ID为1）
-const currentUserId = ref(1)
-
 // 是否是队长
 const isLeader = computed(() => {
   return teamDetail.value.leaderId === currentUserId.value
@@ -282,31 +309,64 @@ const fetchTeamDetail = async () => {
 }
 
 /**
+ * 搜索学生
+ */
+const handleSearchStudents = async () => {
+  const keyword = inviteForm.value.keyword.trim()
+  if (!keyword) {
+    searchResults.value = []
+    return
+  }
+  
+  isSearching.value = true
+  try {
+    const response = await userApi.searchStudents(keyword)
+    if (response.code === 0) {
+      // 过滤掉已经在队伍中的成员
+      const memberStudentIds = teamDetail.value.members.map(m => m.studentId)
+      searchResults.value = response.data.filter(s => !memberStudentIds.includes(s.userId))
+    } else {
+      searchResults.value = []
+    }
+  } catch (error) {
+    console.error('搜索学生失败:', error)
+    searchResults.value = []
+  } finally {
+    isSearching.value = false
+  }
+}
+
+/**
+ * 选择学生
+ */
+const selectStudent = (student: StudentInfo) => {
+  inviteForm.value.selectedStudent = student
+}
+
+/**
  * 邀请队员
  */
 const handleInviteMember = async () => {
-  inviteErrors.value = { studentNo: '' }
+  inviteErrors.value = { keyword: '' }
   
-  if (!inviteForm.value.studentNo.trim()) {
-    inviteErrors.value.studentNo = '请输入学号'
+  if (!inviteForm.value.selectedStudent) {
+    inviteErrors.value.keyword = '请选择要邀请的学生'
     return
   }
   
   isInviting.value = true
   try {
-    // 这里需要后端提供根据学号查询学生ID的接口
-    // 暂时模拟一个学生ID
-    const studentId = 2
-    
     const response = await teamApi.inviteMember({
       teamId: teamDetail.value.id,
-      studentId
+      studentId: inviteForm.value.selectedStudent.userId
     })
     
     if (response.code === 0) {
       alert('邀请已发送')
       showInviteModal.value = false
-      inviteForm.value.studentNo = ''
+      inviteForm.value.keyword = ''
+      inviteForm.value.selectedStudent = null
+      searchResults.value = []
       fetchTeamDetail()
     } else {
       alert(response.message || '邀请失败')
@@ -678,7 +738,8 @@ onMounted(() => {
   background: #fff;
   border-radius: 12px;
   width: 90%;
-  max-width: 400px;
+  max-width: 500px;
+  max-height: 80vh;
   overflow: hidden;
 }
 
@@ -712,6 +773,8 @@ onMounted(() => {
 
 .modal-body {
   padding: 20px;
+  max-height: 400px;
+  overflow-y: auto;
 }
 
 .modal-footer {
@@ -783,5 +846,76 @@ onMounted(() => {
   margin-top: 4px;
   font-size: 12px;
   color: #f44336;
+}
+
+/* 搜索结果样式 */
+.search-results {
+  margin-top: 16px;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.search-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.search-item:hover {
+  background-color: #f8f9ff;
+}
+
+.search-item.selected {
+  background-color: #e8e4ff;
+}
+
+.search-item-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.search-item-info {
+  flex: 1;
+}
+
+.search-item-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.search-item-meta {
+  font-size: 12px;
+  color: #999;
+}
+
+.check-icon {
+  color: #667eea;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.search-loading {
+  text-align: center;
+  padding: 20px;
+  color: #999;
+}
+
+.search-empty {
+  text-align: center;
+  padding: 20px;
+  color: #999;
 }
 </style>
