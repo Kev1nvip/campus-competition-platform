@@ -11,4 +11,7 @@ public interface AwardRecordRepository extends JpaRepository<AwardRecord, Long> 
 
     // 按提交人ID分页查询（学生/老师查看自己的获奖记录）
     Page<AwardRecord> findBySubmitterId(Long submitterId, Pageable pageable);
+
+    // 统计某种状态的获奖记录数量
+    long countByStatus(String status);
 }
