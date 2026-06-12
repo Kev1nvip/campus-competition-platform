@@ -65,6 +65,11 @@ const routes: RouteRecordRaw[] = [
   // ========== 你（队友B）负责：教师端、管理员路由 ==========
   ...teacherRoutes,
   ...adminRoutes
+  {
+    path: '/ai-recommend',
+    name: 'AiRecommend',
+    component: () => import('../views/AiRecommend.vue')
+  }
 ]
 
 // 使用 createWebHistory 实现 HTML5 history 模式

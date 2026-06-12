@@ -23,4 +23,6 @@ public interface SysUserRepository extends JpaRepository<SysUser, Long> {
      * 检查学号是否存在
      */
     boolean existsByStudentNo(String studentNo);
+    // 统计某个角色的用户数量
+    long countByRole(String role);
 }
