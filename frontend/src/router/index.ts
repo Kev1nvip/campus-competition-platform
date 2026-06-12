@@ -55,6 +55,11 @@ const routes: RouteRecordRaw[] = [
     path: '/profile',
     name: 'StudentProfile',
     component: () => import('../views/StudentProfile.vue')
+  },
+  {
+    path: '/ai-recommend',
+    name: 'AiRecommend',
+    component: () => import('../views/AiRecommend.vue')
   }
 ]
 
