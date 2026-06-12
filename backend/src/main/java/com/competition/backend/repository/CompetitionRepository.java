@@ -12,4 +12,6 @@ public interface CompetitionRepository extends JpaRepository<Competition, Long>,
     
     boolean existsByTitleAndTypeAndOrganizerAndCompetitionStartAndStatusNot(
             String title, String type, String organizer, OffsetDateTime competitionStart, String status);
+    // 统计某种状态的竞赛数量
+    long countByStatus(String status);
 }
