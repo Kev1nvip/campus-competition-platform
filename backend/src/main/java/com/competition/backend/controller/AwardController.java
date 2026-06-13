@@ -2,9 +2,13 @@ package com.competition.backend.controller;
 
 import com.competition.backend.common.constant.ErrorCode;
 import com.competition.backend.common.exception.BusinessException;
+import com.competition.backend.common.result.PageVO;
 import com.competition.backend.common.result.Result;
 import com.competition.backend.dto.AwardAuditDTO;
 import com.competition.backend.dto.CreateAwardDTO;
+import com.competition.backend.repository.AwardRecordRepository;
+import com.competition.backend.repository.CompetitionRepository;
+import com.competition.backend.repository.SysUserRepository;
 import com.competition.backend.service.AwardService;
 import com.competition.backend.util.SecurityUtil;
 import com.competition.backend.vo.AwardVO;
@@ -14,7 +18,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,6 +30,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -33,6 +41,9 @@ import java.util.UUID;
 public class AwardController {
 
     private final AwardService awardService;
+    private final AwardRecordRepository awardRecordRepository;
+    private final SysUserRepository userRepository;
+    private final CompetitionRepository competitionRepository;
 
     @Value("${upload.path:./uploads}")
     private String uploadPath;
@@ -102,5 +113,32 @@ public class AwardController {
         Long userId = SecurityUtil.getCurrentUserId();
         Page<AwardVO> page = awardService.getMyAwards(userId, pageable);
         return Result.success(page);
+    }
+
+    @Operation(summary = "管理员查询待审核获奖记录列表")
+    @GetMapping("/pending")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Result<PageVO<Map<String, Object>>> adminPendingAwards(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        var pageResult = awardRecordRepository.findByStatus("PENDING",
+                PageRequest.of(page - 1, size, Sort.by(Sort.Direction.ASC, "createdAt")));
+        return Result.success(PageVO.of(pageResult, r -> {
+            Map<String, Object> item = new HashMap<>();
+            item.put("id", r.getId());
+            item.put("awardName", r.getAwardName());
+            item.put("awardLevel", r.getAwardLevel());
+            item.put("awardDate", r.getAwardDate());
+            item.put("certificateUrl", r.getCertificateUrl());
+            item.put("bizType", r.getBizType());
+            item.put("bizId", r.getBizId());
+            item.put("status", r.getStatus());
+            item.put("createdAt", r.getCreatedAt());
+            // 提交人
+            userRepository.findById(r.getSubmitterId()).ifPresent(u -> item.put("submitterName", u.getRealName()));
+            // 竞赛
+            competitionRepository.findById(r.getCompetitionId()).ifPresent(c -> item.put("competitionTitle", c.getTitle()));
+            return item;
+        }));
     }
 }

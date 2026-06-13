@@ -8,6 +8,8 @@ import com.competition.backend.entity.IndividualSignup;
 import com.competition.backend.repository.CompetitionRepository;
 import com.competition.backend.repository.IndividualSignupRepository;
 import com.competition.backend.repository.SysUserRepository;
+import com.competition.backend.repository.TeamRepository;
+import com.competition.backend.repository.TeamSignupRepository;
 import com.competition.backend.service.SignupService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -33,6 +35,8 @@ public class SignupController {
     private final IndividualSignupRepository individualSignupRepository;
     private final SysUserRepository userRepository;
     private final CompetitionRepository competitionRepository;
+    private final TeamSignupRepository teamSignupRepository;
+    private final TeamRepository teamRepository;
 
     @Operation(summary = "个人赛报名")
     @PostMapping("/individual")
@@ -107,5 +111,43 @@ public class SignupController {
     public Result<Void> submitTeam(@PathVariable Long id) {
         signupService.submitTeam(id);
         return Result.success();
+    }
+
+    @Operation(summary = "管理员查询待审核团队赛报名列表（含关联信息）")
+    @GetMapping("/team/pending")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Result<PageVO<Map<String, Object>>> adminTeamPendingList(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Page<com.competition.backend.entity.TeamSignup> pageResult = teamSignupRepository.findByStatusIn(
+                List.of("PENDING", "RESUBMITTED"),
+                PageRequest.of(page - 1, size, Sort.by(Sort.Direction.ASC, "submittedAt")));
+
+        return Result.success(PageVO.of(pageResult, signup -> {
+            Map<String, Object> item = new HashMap<>();
+            item.put("id", signup.getId());
+            item.put("competitionId", signup.getCompetitionId());
+            item.put("teamId", signup.getTeamId());
+            item.put("teacherId", signup.getTeacherId());
+            item.put("status", signup.getStatus());
+            item.put("submittedAt", signup.getSubmittedAt());
+            item.put("rejectReason", signup.getRejectReason());
+            // 关联竞赛
+            competitionRepository.findById(signup.getCompetitionId())
+                    .ifPresent(c -> item.put("competitionTitle", c.getTitle()));
+            // 关联队伍和队长
+            teamRepository.findById(signup.getTeamId()).ifPresent(t -> {
+                item.put("teamName", t.getTeamName());
+                item.put("memberCount", t.getMemberCount());
+                userRepository.findById(t.getLeaderId())
+                        .ifPresent(u -> item.put("leaderName", u.getRealName()));
+            });
+            // 关联老师
+            if (signup.getTeacherId() != null) {
+                userRepository.findById(signup.getTeacherId())
+                        .ifPresent(u -> item.put("teacherName", u.getRealName()));
+            }
+            return item;
+        }));
     }
 }

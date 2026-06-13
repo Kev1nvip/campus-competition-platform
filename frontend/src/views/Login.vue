@@ -96,7 +96,7 @@ const handleLogin = async () => {
         router.push('/teacher/competition')
       } else if (userInfo.role === 'ADMIN') {
         adminStore.setUser({ id: String(userInfo.userId), name: userInfo.realName })
-        router.push('/admin/user')
+        router.push('/admin/signup-audit')
       } else {
         // STUDENT
         router.push('/student/dashboard')

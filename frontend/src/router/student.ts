@@ -27,10 +27,22 @@ export const studentRoutes: RouteRecordRaw[] = [
         name: 'StudentSignup',
         component: () => import('@/views/StudentSignup.vue')
       },
+      // 队伍大厅（所有招募中的队伍）
+      {
+        path: 'team-hall',
+        name: 'TeamHall',
+        component: () => import('@/views/TeamHall.vue')
+      },
+      // 我的队伍（自己参与的队伍）
+      {
+        path: 'my-teams',
+        name: 'MyTeams',
+        component: () => import('@/views/MyTeams.vue')
+      },
+      // 队伍详情（保留旧路径兼容）
       {
         path: 'teams',
-        name: 'StudentTeams',
-        component: () => import('@/views/TeamPage.vue')
+        redirect: '/student/team-hall'
       },
       {
         path: 'team/:id',

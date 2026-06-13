@@ -5,7 +5,6 @@ import com.competition.backend.common.exception.BusinessException;
 import com.competition.backend.common.result.PageVO;
 import com.competition.backend.dto.CompetitionSaveDTO;
 import com.competition.backend.entity.Competition;
-import com.competition.backend.entity.SysUser;
 import com.competition.backend.repository.CompetitionRepository;
 import com.competition.backend.repository.SysUserRepository;
 import com.competition.backend.service.CompetitionService;
@@ -196,7 +195,7 @@ public class CompetitionServiceImpl implements CompetitionService {
 
     private CompetitionListVO convertToListVO(Competition c) {
         CompetitionListVO vo = new CompetitionListVO();
-        vo.setCompetitionId(c.getId());
+        vo.setId(c.getId());
         vo.setTitle(c.getTitle());
         vo.setType(c.getType());
         vo.setOrganizer(c.getOrganizer());

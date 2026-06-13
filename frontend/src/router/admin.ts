@@ -5,8 +5,18 @@ export const adminRoutes: RouteRecordRaw[] = [
   {
     path: '/admin',
     component: Layout,
-    redirect: '/admin/user',
+    redirect: '/admin/signup-audit',
     children: [
+      {
+        path: 'signup-audit',
+        name: 'AdminSignupAudit',
+        component: () => import('@/views/admin/SignupAudit.vue')
+      },
+      {
+        path: 'award-audit',
+        name: 'AdminAwardAudit',
+        component: () => import('@/views/admin/AwardAudit.vue')
+      },
       {
         path: 'user',
         name: 'AdminUser',

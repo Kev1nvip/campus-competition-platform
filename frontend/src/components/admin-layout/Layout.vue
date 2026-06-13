@@ -7,50 +7,43 @@
         <span>{{ role === 'teacher' ? '教师后台' : '管理后台' }}</span>
       </div>
 
-      <el-menu
-        :default-active="$route.path"
-        router
-        class="sidebar-menu"
-      >
+      <el-menu :default-active="$route.path" router class="sidebar-menu">
         <template v-if="role === 'teacher'">
           <el-menu-item index="/teacher/competition">
-            <el-icon><Edit /></el-icon>
-            <span>发布竞赛</span>
+            <el-icon><Edit /></el-icon><span>发布竞赛</span>
           </el-menu-item>
           <el-menu-item index="/teacher/apply">
-            <el-icon><Document /></el-icon>
-            <span>报名审核</span>
+            <el-icon><Document /></el-icon><span>报名审核</span>
           </el-menu-item>
           <el-menu-item index="/teacher/team">
-            <el-icon><User /></el-icon>
-            <span>队伍管理</span>
+            <el-icon><User /></el-icon><span>队伍管理</span>
           </el-menu-item>
           <el-menu-item index="/teacher/award">
-            <el-icon><Trophy /></el-icon>
-            <span>录入获奖</span>
+            <el-icon><Trophy /></el-icon><span>录入获奖</span>
           </el-menu-item>
           <el-menu-item index="/teacher/profile">
-            <el-icon><User /></el-icon>
-            <span>个人中心</span>
+            <el-icon><User /></el-icon><span>个人中心</span>
           </el-menu-item>
         </template>
 
         <template v-if="role === 'admin'">
+          <el-menu-item index="/admin/signup-audit">
+            <el-icon><Document /></el-icon><span>报名审核</span>
+          </el-menu-item>
+          <el-menu-item index="/admin/award-audit">
+            <el-icon><Trophy /></el-icon><span>获奖审核</span>
+          </el-menu-item>
           <el-menu-item index="/admin/user">
-            <el-icon><UserFilled /></el-icon>
-            <span>用户管理</span>
+            <el-icon><UserFilled /></el-icon><span>用户管理</span>
           </el-menu-item>
           <el-menu-item index="/admin/competition">
-            <el-icon><List /></el-icon>
-            <span>竞赛管理</span>
+            <el-icon><List /></el-icon><span>竞赛管理</span>
           </el-menu-item>
           <el-menu-item index="/admin/dept">
-            <el-icon><OfficeBuilding /></el-icon>
-            <span>院系管理</span>
+            <el-icon><OfficeBuilding /></el-icon><span>院系管理</span>
           </el-menu-item>
           <el-menu-item index="/admin/stat">
-            <el-icon><DataLine /></el-icon>
-            <span>数据统计</span>
+            <el-icon><DataLine /></el-icon><span>数据统计</span>
           </el-menu-item>
         </template>
       </el-menu>
@@ -63,6 +56,8 @@
           <span class="page-title">{{ currentTitle }}</span>
         </div>
         <div class="topbar-right">
+          <NotificationBell />
+          <el-divider direction="vertical" />
           <span class="username">{{ userName }}</span>
           <el-divider direction="vertical" />
           <el-button text @click="logout" class="logout-btn">退出登录</el-button>
@@ -81,6 +76,7 @@ import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useTeacherStore } from '@/store/userTeacher'
 import { useAdminStore } from '@/store/userAdmin'
+import NotificationBell from '@/components/NotificationBell.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -92,10 +88,12 @@ const userName = computed(() => role.value === 'teacher' ? teacherStore.name : a
 
 const titleMap: Record<string, string> = {
   '/teacher/competition': '发布竞赛',
-  '/teacher/apply': '报名审核',
+  '/teacher/apply': '申请处理',
   '/teacher/team': '队伍管理',
   '/teacher/award': '录入获奖',
   '/teacher/profile': '个人中心',
+  '/admin/signup-audit': '报名审核',
+  '/admin/award-audit': '获奖审核',
   '/admin/user': '用户管理',
   '/admin/competition': '竞赛管理',
   '/admin/dept': '院系管理',
@@ -104,27 +102,16 @@ const titleMap: Record<string, string> = {
 const currentTitle = computed(() => titleMap[route.path] ?? '后台管理')
 
 const logout = () => {
-  // 清除 localStorage（token + userInfo）
   localStorage.removeItem('token')
   localStorage.removeItem('userInfo')
-  // 清除对应 store
-  if (role.value === 'teacher') {
-    teacherStore.clear()
-  } else {
-    adminStore.clear()
-  }
-  // 统一跳转到登录页
+  if (role.value === 'teacher') teacherStore.clear()
+  else adminStore.clear()
   router.push('/login')
 }
 </script>
 
 <style scoped>
-.sidebar {
-  background: #fafafa;
-  border-right: 1px solid #e0e0e0;
-  display: flex;
-  flex-direction: column;
-}
+.sidebar { background: #fafafa; border-right: 1px solid #e0e0e0; display: flex; flex-direction: column; }
 
 .sidebar-logo {
   height: 56px;
@@ -139,16 +126,9 @@ const logout = () => {
   letter-spacing: 0.5px;
 }
 
-.logo-icon {
-  font-size: 12px;
-  color: #555;
-}
+.logo-icon { font-size: 12px; color: #555; }
 
-.sidebar-menu {
-  flex: 1;
-  border-right: none !important;
-  background: transparent;
-}
+.sidebar-menu { flex: 1; border-right: none !important; background: transparent; }
 
 .topbar {
   background: #fff;
@@ -159,36 +139,14 @@ const logout = () => {
   padding: 0 24px;
 }
 
-.topbar-left .page-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: #111;
-}
+.topbar-left .page-title { font-size: 15px; font-weight: 600; color: #111; }
 
-.topbar-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: #555;
-}
+.topbar-right { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #555; }
 
-.username {
-  font-weight: 500;
-  color: #1a1a1a;
-}
+.username { font-weight: 500; color: #1a1a1a; }
 
-.logout-btn {
-  color: #555 !important;
-  font-size: 13px !important;
-}
-.logout-btn:hover {
-  color: #111 !important;
-}
+.logout-btn { color: #555 !important; font-size: 13px !important; }
+.logout-btn:hover { color: #111 !important; }
 
-.main-content {
-  background: #fafafa;
-  padding: 24px;
-  overflow-y: auto;
-}
+.main-content { background: #fafafa; padding: 24px; overflow-y: auto; }
 </style>

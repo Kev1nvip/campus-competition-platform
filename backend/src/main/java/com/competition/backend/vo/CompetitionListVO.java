@@ -5,7 +5,7 @@ import java.time.OffsetDateTime;
 
 @Data
 public class CompetitionListVO {
-    private Long competitionId;
+    private Long id;
     private String title;
     private String type;
     private String organizer;

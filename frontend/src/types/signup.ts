@@ -41,15 +41,12 @@ export interface IndividualSignupVO {
 
 // 老师信息（用于选择老师）
 export interface TeacherInfo {
-  userId: number
-  username: string
+  id: number        // 后端返回字段名是 id
   realName: string
-  title: string       // 职称
-  department: string  // 所属院系
-  phone?: string
+  title: string
+  department: string
   email?: string
-  maxTeamQuota: number    // 最大带队数量
-  currentTeamCount: number // 当前带队数量
+  avatarUrl?: string
 }
 
 // 报名状态中文映射

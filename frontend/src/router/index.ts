@@ -43,7 +43,7 @@ router.beforeEach((to, _from, next) => {
 
   // 1. 已登录用户访问公开页（/ /login /register）→ 跳到对应工作台
   if (isLoggedIn && PUBLIC_PATHS.includes(to.path)) {
-    if (role === 'ADMIN') return next('/admin/user')
+    if (role === 'ADMIN') return next('/admin/signup-audit')
     if (role === 'TEACHER') return next('/teacher/competition')
     return next('/student/dashboard')
   }

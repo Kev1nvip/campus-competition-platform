@@ -39,6 +39,12 @@ public class SecurityConfig {
     private static final String[] WHITE_LIST = {
             "/api/v1/auth/register",
             "/api/v1/auth/login",
+            // 竞赛浏览公开访问
+            "/api/v1/competitions",
+            "/api/v1/competitions/**",
+            // 教师列表（学生报名选老师用，无需登录）
+            "/api/v1/user/teachers",
+            // Knife4j 文档
             "/doc.html",
             "/webjars/**",
             "/v3/api-docs/**",
