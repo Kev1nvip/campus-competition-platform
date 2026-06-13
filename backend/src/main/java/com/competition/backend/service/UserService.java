@@ -13,8 +13,10 @@ public interface UserService {
 
     TeacherProfileVO getTeacherProfile(Long teacherId);
 
-    /**
-     * 管理员分页查询用户列表
-     */
     PageVO<UserInfoVO> listUsers(int page, int size, String keyword);
+
+    /**
+     * 学生选老师时使用：分页查询所有教师，支持姓名/院系关键字搜索
+     */
+    PageVO<TeacherProfileVO> listTeachers(int page, int size, String keyword);
 }

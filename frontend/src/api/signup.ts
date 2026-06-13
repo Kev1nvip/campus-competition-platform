@@ -29,5 +29,5 @@ export const signupApi = {
     department?: string
     keyword?: string
   }): Promise<ApiResponse<{ list: TeacherInfo[]; total: number; page: number; size: number; totalPages: number }>> =>
-    request({ url: '/v1/users/teachers', method: 'GET', params })
+    request({ url: '/v1/user/teachers', method: 'GET', params })
 }

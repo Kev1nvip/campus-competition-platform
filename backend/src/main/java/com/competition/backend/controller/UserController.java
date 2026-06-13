@@ -56,4 +56,13 @@ public class UserController {
             @RequestParam(required = false) String keyword) {
         return Result.success(userService.listUsers(page, size, keyword));
     }
+
+    @Operation(summary = "教师列表（学生报名选老师用，无权限限制）")
+    @GetMapping("/teachers")
+    public Result<PageVO<TeacherProfileVO>> listTeachers(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "50") int size,
+            @RequestParam(required = false) String keyword) {
+        return Result.success(userService.listTeachers(page, size, keyword));
+    }
 }

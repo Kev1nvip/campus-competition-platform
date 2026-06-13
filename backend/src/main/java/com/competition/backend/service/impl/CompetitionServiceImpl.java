@@ -9,6 +9,7 @@ import com.competition.backend.entity.SysUser;
 import com.competition.backend.repository.CompetitionRepository;
 import com.competition.backend.repository.SysUserRepository;
 import com.competition.backend.service.CompetitionService;
+import com.competition.backend.service.RedisService;
 import com.competition.backend.util.SecurityUtil;
 import com.competition.backend.vo.CompetitionListVO;
 import jakarta.persistence.criteria.Predicate;
@@ -30,6 +31,7 @@ public class CompetitionServiceImpl implements CompetitionService {
 
     private final CompetitionRepository competitionRepository;
     private final SysUserRepository userRepository;
+    private final RedisService redisService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -74,9 +76,12 @@ public class CompetitionServiceImpl implements CompetitionService {
                 .build();
 
         Competition saved = competitionRepository.save(competition);
-        
-        // TODO: 初始化 Redis 计数器 (在后续 feature/concurrent 中实现)
-        
+
+        // 有名额限制时，初始化 Redis 剩余配额计数器
+        if (Boolean.TRUE.equals(saveDTO.getHasQuota()) && saveDTO.getMaxQuota() != null) {
+            redisService.initCompetitionQuota(saved.getId(), saveDTO.getMaxQuota());
+        }
+
         return saved.getId();
     }
 

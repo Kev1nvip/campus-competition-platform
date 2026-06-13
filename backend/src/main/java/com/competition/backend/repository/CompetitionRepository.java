@@ -6,12 +6,15 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 
 @Repository
 public interface CompetitionRepository extends JpaRepository<Competition, Long>, JpaSpecificationExecutor<Competition> {
-    
+
     boolean existsByTitleAndTypeAndOrganizerAndCompetitionStartAndStatusNot(
             String title, String type, String organizer, OffsetDateTime competitionStart, String status);
-    // 统计某种状态的竞赛数量
+
     long countByStatus(String status);
+
+    List<Competition> findAllByStatusNot(String status);
 }

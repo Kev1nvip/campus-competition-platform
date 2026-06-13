@@ -149,4 +149,32 @@ public class UserServiceImpl implements UserService {
         vo.setCreatedAt(user.getCreatedAt());
         return vo;
     }
+
+    @Override
+    public PageVO<TeacherProfileVO> listTeachers(int page, int size, String keyword) {
+        Specification<SysUser> spec = (root, query, cb) -> {
+            // 只查 TEACHER 角色且账号正常
+            jakarta.persistence.criteria.Predicate roleP = cb.equal(root.get("role"), "TEACHER");
+            jakarta.persistence.criteria.Predicate statusP = cb.equal(root.get("status"), "ACTIVE");
+            if (!StringUtils.hasText(keyword)) return cb.and(roleP, statusP);
+            String like = "%" + keyword + "%";
+            jakarta.persistence.criteria.Predicate kwP = cb.or(
+                    cb.like(root.get("realName"), like),
+                    cb.like(root.get("department"), like)
+            );
+            return cb.and(roleP, statusP, kwP);
+        };
+        Page<SysUser> pageResult = userRepository.findAll(
+                spec, PageRequest.of(page - 1, size, Sort.by(Sort.Direction.ASC, "realName")));
+        return PageVO.of(pageResult, user -> {
+            TeacherProfileVO vo = new TeacherProfileVO();
+            vo.setId(user.getId());
+            vo.setRealName(user.getRealName());
+            vo.setDepartment(user.getDepartment());
+            vo.setTitle(user.getTitle());
+            vo.setEmail(user.getEmail());
+            vo.setAvatarUrl(user.getAvatarUrl());
+            return vo;
+        });
+    }
 }
