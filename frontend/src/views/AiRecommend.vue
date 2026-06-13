@@ -1,288 +1,83 @@
-<!--
-  组件：AI推荐页面
-  说明：根据用户输入的方向，展示AI推荐的竞赛列表
--->
 <template>
-  <div class="ai-recommend-container">
-    <!-- 页面标题 -->
-    <div class="ai-recommend__header">
-      <h1 class="ai-recommend__title">🤖 AI 竞赛推荐</h1>
-      <p class="ai-recommend__subtitle">智能推荐适合您的学术竞赛</p>
-    </div>
+  <div class="page-wrap">
+    <header class="nav">
+      <span class="nav-brand" @click="router.push('/')">◆ 校园竞赛平台</span>
+      <span class="nav-item" @click="router.push('/')">← 返回首页</span>
+    </header>
 
-    <!-- 输入区域 -->
-    <div class="ai-recommend__input-section">
-      <div class="input-card">
-        <div class="input-card__header">
-          <h2>输入您感兴趣的方向</h2>
-        </div>
-        
-        <div class="input-card__body">
-          <div class="input-wrapper">
-            <input 
-              v-model="inputDirection"
-              type="text"
-              class="direction-input"
-              placeholder="例如：人工智能、数据科学、数学建模、创新创业..."
-              @keyup.enter="handleRecommend"
-            />
-            <button 
-              class="recommend-btn" 
-              @click="handleRecommend"
-              :disabled="isLoading || !inputDirection.trim()"
-            >
-              {{ isLoading ? '推荐中...' : '🔍 智能推荐' }}
-            </button>
-          </div>
+    <div class="page-inner">
+      <h2>AI 竞赛推荐</h2>
+      <p class="sub">描述你感兴趣的方向，AI 为你推荐合适的竞赛</p>
 
-          <!-- 热门方向标签 -->
-          <div class="hot-tags">
-            <span class="hot-tags__label">热门方向：</span>
-            <button 
-              v-for="tag in hotDirections" 
-              :key="tag"
-              class="hot-tag"
-              @click="selectDirection(tag)"
-            >
-              {{ tag }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 推荐结果 -->
-    <div v-if="recommendResult && recommendResult.items.length > 0" class="ai-recommend__result-section">
-      <div class="result-header">
-        <h2>📊 为您推荐的竞赛</h2>
-        <div class="result-source">
-          <span class="source-label">数据来源：</span>
-          <span class="source-value">{{ recommendResult.source }}</span>
-          <span class="source-time">{{ formatDate(recommendResult.recommendTime) }}</span>
-        </div>
-      </div>
-
-      <div class="recommend-list">
-        <div 
-          v-for="(item, index) in recommendResult.items" 
-          :key="item.competition.id"
-          class="recommend-card"
+      <div class="input-area">
+        <el-input
+          v-model="prompt"
+          type="textarea"
+          :rows="3"
+          placeholder="例如：我对人工智能、数学建模感兴趣，想参加编程类比赛..."
+          :disabled="loading"
+        />
+        <el-button
+          type="primary"
+          :loading="loading"
+          style="margin-top:12px;"
+          @click="handleRecommend"
         >
-          <div class="recommend-card__rank" :class="getRankClass(index)">
-            {{ index + 1 }}
-          </div>
-          
-          <div class="recommend-card__content">
-            <div class="recommend-card__header">
-              <div class="competition-info">
-                <h3 class="competition-title">{{ item.competition.title }}</h3>
-                <div class="competition-meta">
-                  <span :class="['type-badge', item.competition.type === 'INDIVIDUAL' ? 'type-individual' : 'type-team']">
-                    {{ item.competition.type === 'INDIVIDUAL' ? '个人赛' : '团队赛' }}
-                  </span>
-                  <span :class="['status-badge', getStatusClass(item.competition.status)]">
-                    {{ statusMap[item.competition.status] }}
-                  </span>
-                  <span class="match-score">匹配度 {{ item.matchScore }}%</span>
-                </div>
-              </div>
-              
-              <div class="match-bar">
-                <div class="match-bar__fill" :style="{ width: item.matchScore + '%' }"></div>
-              </div>
-            </div>
-
-            <div class="recommend-card__body">
-              <div class="recommend-reason">
-                <span class="reason-label">推荐理由：</span>
-                <span class="reason-text">{{ item.reason }}</span>
-              </div>
-              
-              <div class="recommend-tags">
-                <span 
-                  v-for="tag in item.tags" 
-                  :key="tag"
-                  class="tag"
-                >
-                  {{ tag }}
-                </span>
-              </div>
-            </div>
-
-            <div class="recommend-card__footer">
-              <div class="competition-details">
-                <span class="detail-item">主办方：{{ item.competition.organizer }}</span>
-                <span class="detail-item">报名时间：{{ formatDate(item.competition.signupStart) }} - {{ formatDate(item.competition.signupEnd) }}</span>
-              </div>
-              <button class="view-detail-btn" @click="viewCompetition(item.competition.id)">
-                查看详情 →
-              </button>
-            </div>
-          </div>
-        </div>
+          {{ loading ? '推荐中...' : '获取推荐' }}
+        </el-button>
       </div>
-    </div>
 
-    <!-- 空状态 -->
-    <div v-else-if="hasSearched && (!recommendResult || recommendResult.items.length === 0)" class="empty-state">
-      <div class="empty-icon">🔍</div>
-      <p>暂无相关推荐</p>
-      <p class="empty-hint">请尝试其他方向关键词</p>
-    </div>
+      <el-divider v-if="result" />
 
-    <!-- 初始状态 -->
-    <div v-else class="initial-state">
-      <div class="initial-icon">✨</div>
-      <h3>发现适合您的竞赛</h3>
-      <p>输入您感兴趣的方向，AI将为您智能推荐相关竞赛</p>
-      <div class="initial-features">
-        <div class="feature-item">
-          <span class="feature-icon">🎯</span>
-          <span>精准匹配</span>
-        </div>
-        <div class="feature-item">
-          <span class="feature-icon">📚</span>
-          <span>智能分析</span>
-        </div>
-        <div class="feature-item">
-          <span class="feature-icon">🔄</span>
-          <span>实时更新</span>
-        </div>
+      <div v-if="result" class="result-area">
+        <h3>推荐结果</h3>
+        <div class="result-text">{{ result }}</div>
       </div>
+
+      <div v-if="errorMsg" class="error-tip">{{ errorMsg }}</div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { aiApi } from '@/api/ai'
-import type { RecommendResponse } from '@/types/ai'
-import { statusMap } from '@/types/competition'
-import type { CompetitionStatus } from '@/types/competition'
+import request from '@/utils/request'
 
-// 路由
 const router = useRouter()
+const prompt = ref('')
+const result = ref('')
+const loading = ref(false)
+const errorMsg = ref('')
 
-// 响应式数据
-const inputDirection = ref('')
-const isLoading = ref(false)
-const hasSearched = ref(false)
-const recommendResult = ref<RecommendResponse | null>(null)
-const hotDirections = ref<string[]>([])
-
-/**
- * 获取热门方向
- */
-const fetchHotDirections = async () => {
-  try {
-    const response = await aiApi.getHotDirections()
-    if (response.code === 0 && response.data) {
-      hotDirections.value = response.data
-    }
-  } catch (error) {
-    console.error('获取热门方向失败:', error)
-    // 使用默认热门方向
-    hotDirections.value = ['人工智能', '数据科学', '数学建模', '创新创业', '计算机视觉', '机器学习']
-  }
-}
-
-/**
- * 选择方向标签
- */
-const selectDirection = (direction: string) => {
-  inputDirection.value = direction
-  handleRecommend()
-}
-
-/**
- * 获取推荐结果
- */
 const handleRecommend = async () => {
-  if (!inputDirection.value.trim()) {
-    return
-  }
-  
-  isLoading.value = true
-  hasSearched.value = true
-  
+  if (!prompt.value.trim()) return (errorMsg.value = '请输入感兴趣的方向')
+  loading.value = true
+  errorMsg.value = ''
+  result.value = ''
   try {
-    const response = await aiApi.getRecommendations({
-      direction: inputDirection.value.trim(),
-      count: 10
-    })
-    
-    if (response.code === 0 && response.data) {
-      recommendResult.value = response.data
-    } else {
-      recommendResult.value = null
-    }
-  } catch (error) {
-    console.error('获取推荐失败:', error)
-    recommendResult.value = null
+    const res: any = await request({ url: '/v1/ai/recommend', method: 'POST', data: { prompt: prompt.value } })
+    if (res.code === 0) result.value = res.data
+    else errorMsg.value = res.message || '推荐失败'
+  } catch {
+    errorMsg.value = '网络错误，请稍后重试'
   } finally {
-    isLoading.value = false
+    loading.value = false
   }
 }
-
-/**
- * 查看竞赛详情
- */
-const viewCompetition = (id: number) => {
-  router.push(`/competition/${id}`)
-}
-
-/**
- * 获取排名样式类
- */
-const getRankClass = (index: number) => {
-  switch (index) {
-    case 0:
-      return 'rank-gold'
-    case 1:
-      return 'rank-silver'
-    case 2:
-      return 'rank-bronze'
-    default:
-      return 'rank-default'
-  }
-}
-
-/**
- * 获取状态样式类
- */
-const getStatusClass = (status: CompetitionStatus) => {
-  switch (status) {
-    case 'SIGNING':
-      return 'status-signing'
-    case 'UPCOMING':
-      return 'status-upcoming'
-    case 'CLOSED':
-      return 'status-closed'
-    case 'ONGOING':
-      return 'status-ongoing'
-    case 'FINISHED':
-      return 'status-finished'
-    default:
-      return 'status-offline'
-  }
-}
-
-/**
- * 格式化日期
- */
-const formatDate = (dateStr: string) => {
-  if (!dateStr) return '-'
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  })
-}
-
-// 页面加载时获取热门方向
-onMounted(() => {
-  fetchHotDirections()
-})
 </script>
+
+<style scoped>
+.page-wrap { min-height: 100vh; background: #fff; }
+.nav { height: 56px; border-bottom: 1px solid #e0e0e0; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; }
+.nav-brand { font-size: 14px; font-weight: 800; letter-spacing: 1px; color: #111; cursor: pointer; }
+.nav-item { font-size: 13px; color: #555; cursor: pointer; padding: 6px 12px; border-radius: 4px; }
+.nav-item:hover { background: #f4f4f4; color: #111; }
+.page-inner { max-width: 680px; margin: 0 auto; padding: 40px 20px; }
+h2 { font-size: 20px; font-weight: 700; color: #111; margin-bottom: 6px; }
+.sub { font-size: 13px; color: #888; margin-bottom: 24px; }
+.input-area { margin-bottom: 8px; }
+h3 { font-size: 15px; font-weight: 700; color: #111; margin-bottom: 12px; }
+.result-text { font-size: 14px; color: #333; line-height: 1.9; white-space: pre-wrap; background: #fafafa; border: 1px solid #e0e0e0; border-radius: 6px; padding: 16px 20px; }
+.error-tip { font-size: 13px; color: #888; background: #f8f8f8; border: 1px solid #e8e8e8; border-radius: 4px; padding: 8px 12px; margin-top: 12px; }
+</style>

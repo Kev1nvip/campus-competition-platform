@@ -1,59 +1,112 @@
 <template>
-  <div class="page-box">
-    <h2>平台账号管理</h2>
-    <div class="search-bar">
-      <input v-model="searchVal" placeholder="姓名/账号搜索" />
-      <button @click="searchUser">搜索</button>
-      <button @click="openAdd">新增账号</button>
+  <div>
+    <div class="page-header">
+      <div class="page-title">用户管理</div>
+      <el-button type="primary" size="small" @click="showAdd = true">新增用户</el-button>
     </div>
-    <table border="1" cellpadding="8">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>账号</th>
-          <th>姓名</th>
-          <th>身份</th>
-          <th>状态</th>
-          <th>操作</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="item in userList" :key="item.id">
-          <td>{{ item.id }}</td>
-          <td>{{ item.account }}</td>
-          <td>{{ item.name }}</td>
-          <td>{{ item.role }}</td>
-          <td>{{ item.status }}</td>
-          <td>
-            <button>编辑</button>
-            <button>禁用</button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+
+    <div class="toolbar">
+      <el-input v-model="keyword" placeholder="姓名 / 账号搜索" clearable size="small" style="width:220px;" @keyup.enter="loadData" />
+      <el-button size="small" @click="loadData">搜索</el-button>
+    </div>
+
+    <div v-if="isLoading" class="center-tip">加载中...</div>
+    <div v-else-if="list.length === 0" class="center-tip">暂无用户</div>
+    <el-table v-else :data="filteredList" class="data-table">
+      <el-table-column label="ID" prop="id" width="70" />
+      <el-table-column label="账号" prop="username" />
+      <el-table-column label="姓名" prop="realName" />
+      <el-table-column label="角色" prop="role" width="90">
+        <template #default="{ row }">
+          <el-tag size="small" effect="plain">{{ row.role }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="状态" prop="status" width="90">
+        <template #default="{ row }">
+          <el-tag :type="row.status === 'ACTIVE' ? 'success' : 'danger'" size="small">
+            {{ row.status === 'ACTIVE' ? '正常' : '禁用' }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="100">
+        <template #default="{ row }">
+          <el-button size="small" text @click="ElMessage.info('编辑功能待完善')">编辑</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <!-- 新增用户弹窗 -->
+    <el-dialog v-model="showAdd" title="新增用户" width="440px">
+      <el-form :model="addForm" label-width="80px">
+        <el-form-item label="用户名"><el-input v-model="addForm.username" /></el-form-item>
+        <el-form-item label="密码"><el-input v-model="addForm.password" type="password" show-password /></el-form-item>
+        <el-form-item label="真实姓名"><el-input v-model="addForm.realName" /></el-form-item>
+        <el-form-item label="角色">
+          <el-select v-model="addForm.role" style="width:100%;">
+            <el-option label="学生" value="STUDENT" />
+            <el-option label="教师" value="TEACHER" />
+            <el-option label="管理员" value="ADMIN" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showAdd = false">取消</el-button>
+        <el-button type="primary" @click="handleAdd">确认</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, reactive, onMounted } from 'vue'
 import { getUserList, addUser } from '@/api/admin'
-const userList = ref([])
-const searchVal = ref('')
 
-const load = async () => {
+const list = ref<any[]>([])
+const isLoading = ref(false)
+const keyword = ref('')
+const showAdd = ref(false)
+const addForm = reactive({ username: '', password: '', realName: '', role: 'STUDENT' })
+
+const filteredList = computed(() =>
+  keyword.value
+    ? list.value.filter((u: any) => u.username?.includes(keyword.value) || u.realName?.includes(keyword.value))
+    : list.value
+)
+
+const loadData = async () => {
+  isLoading.value = true
   try {
-    const res = await getUserList()
-    userList.value = res.data.data
-  } catch {}
+    const res: any = await getUserList()
+    if (res.code === 0) list.value = res.data ?? []
+  } finally {
+    isLoading.value = false
+  }
 }
-onMounted(load)
 
-const searchUser = () => load()
-const openAdd = () => alert('弹出新增账号弹窗')
+const handleAdd = async () => {
+  if (!addForm.username || !addForm.password || !addForm.realName) return ElMessage.warning('请填写完整信息')
+  try {
+    const res: any = await addUser(addForm)
+    if (res.code === 0) {
+      ElMessage.success('新增成功')
+      showAdd.value = false
+      addForm.username = ''; addForm.password = ''; addForm.realName = ''
+      loadData()
+    } else {
+      ElMessage.error(res.message || '新增失败')
+    }
+  } catch {
+    ElMessage.error('网络错误')
+  }
+}
+
+onMounted(loadData)
 </script>
 
 <style scoped>
-.page-box { padding:30px; }
-.search-bar { margin-bottom:20px; }
-table { width:100%; border-collapse: collapse; }
+.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #e0e0e0; }
+.page-title { font-size: 16px; font-weight: 700; color: #111; }
+.toolbar { display: flex; gap: 8px; margin-bottom: 14px; }
+.center-tip { text-align: center; padding: 40px; color: #aaa; font-size: 14px; }
+.data-table { width: 100%; background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; }
 </style>
