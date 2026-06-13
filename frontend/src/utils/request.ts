@@ -4,20 +4,18 @@
  * 统一配置响应拦截器处理错误
  */
 import axios from 'axios'
-import type { InternalAxiosRequestConfig, AxiosResponse } from 'axios'
+import type { InternalAxiosRequestConfig, AxiosRequestConfig, AxiosResponse } from 'axios'
+import router from '@/router'
 
-// 创建axios实例，配置基础URL和超时时间
-const request = axios.create({
-  baseURL: 'http://localhost:8080/api',
+const instance = axios.create({
+  baseURL: '/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'
   }
 })
 
-// 请求拦截器
-// 在发送请求前从localStorage获取Token并添加到请求头
-request.interceptors.request.use(
+instance.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token: string | null = localStorage.getItem('token')
     if (token) {
@@ -25,20 +23,25 @@ request.interceptors.request.use(
     }
     return config
   },
-  (error: Error) => {
+  (error: Error) => Promise.reject(error)
+)
+
+// 响应拦截器 unwrap data，401 时清除登录状态并跳转登录页
+instance.interceptors.response.use(
+  (response: AxiosResponse) => response.data,
+  (error: any) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token')
+      localStorage.removeItem('userInfo')
+      router.push('/login')
+    }
     return Promise.reject(error)
   }
 )
 
-// 响应拦截器
-// 统一处理响应数据，只返回data部分
-request.interceptors.response.use(
-  (response: AxiosResponse) => {
-    return response.data
-  },
-  (error: Error) => {
-    return Promise.reject(error)
-  }
-)
+// 包装函数：让 TS 返回类型与拦截器实际行为一致（返回 T 而非 AxiosResponse<T>）
+function request<T = any>(config: AxiosRequestConfig): Promise<T> {
+  return instance.request<T, T>(config)
+}
 
 export default request

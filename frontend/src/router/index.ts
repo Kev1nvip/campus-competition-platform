@@ -85,7 +85,6 @@ router.beforeEach((to, from, next) => {
 
   // 1. 访问教师后台分组
   if (to.path.startsWith('/teacher')) {
-    // 访问登录页直接放行
     if (to.path === '/teacher/login') {
       next()
       return
@@ -94,15 +93,14 @@ router.beforeEach((to, from, next) => {
     if (!teacherStore.id) {
       return next('/teacher/login')
     }
-    // 已登录教师，禁止进入管理员页面（手动篡改地址拦截）
+    // 已登录的是管理员却想进教师后台，拒绝
     if (adminStore.id && !teacherStore.id) {
-      return next('/teacher/competition')
+      return next('/teacher/login')
     }
   }
 
   // 2. 访问管理员后台分组
   if (to.path.startsWith('/admin')) {
-    // 访问登录页直接放行
     if (to.path === '/admin/login') {
       next()
       return
@@ -111,9 +109,9 @@ router.beforeEach((to, from, next) => {
     if (!adminStore.id) {
       return next('/admin/login')
     }
-    // 已登录管理员，禁止进入教师页面
+    // 已登录的是教师却想进管理后台，拒绝
     if (teacherStore.id && !adminStore.id) {
-      return next('/admin/user')
+      return next('/admin/login')
     }
   }
 

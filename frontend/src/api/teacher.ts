@@ -1,37 +1,19 @@
-import axios from 'axios'
+import request from '@/utils/request'
 
-// 创建请求实例
-const service = axios.create({
-  baseURL: '/api',
-  timeout: 6000
-})
+export const teacherLogin = (data: { username: string; password: string }) =>
+  request({ url: '/v1/auth/login', method: 'POST', data })
 
-// 1.教师登录
-export const teacherLogin = (data: { tid: string; pwd: string }) => {
-  return service.post('/teacher/login', data)
-}
+export const addCompetition = (data: any) =>
+  request({ url: '/v1/teacher/comp/add', method: 'POST', data })
 
-// 2.发布竞赛提交
-export const addCompetition = (data: any) => {
-  return service.post('/teacher/comp/add', data)
-}
+export const getApplyList = () =>
+  request({ url: '/v1/teacher/apply/list', method: 'GET' })
 
-// 3.获取报名审核列表
-export const getApplyList = () => {
-  return service.get('/teacher/apply/list')
-}
+export const auditApply = (data: { id: number; status: number }) =>
+  request({ url: '/v1/teacher/apply/audit', method: 'POST', data })
 
-// 4.审核通过/驳回
-export const auditApply = (data: { id: number; status: number }) => {
-  return service.post('/teacher/apply/audit', data)
-}
+export const getTeamList = () =>
+  request({ url: '/v1/teacher/team/list', method: 'GET' })
 
-// 5.队伍列表
-export const getTeamList = () => {
-  return service.get('/teacher/team/list')
-}
-
-// 6.录入获奖提交
-export const addAward = (data: any) => {
-  return service.post('/teacher/award/add', data)
-}
+export const addAward = (data: any) =>
+  request({ url: '/v1/teacher/award/add', method: 'POST', data })

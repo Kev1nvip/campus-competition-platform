@@ -50,8 +50,9 @@ server:
       force: true
 
 # JWT配置
+# 默认密钥仅用于本地开发，生产环境必须通过 JWT_SECRET 环境变量覆盖
 jwt:
-  secret: ${JWT_SECRET:campus-competition-jwt-secret-key-2026}
+  secret: ${JWT_SECRET:campus-competition-platform-jwt-secret-key-for-development-only-2026}
   expiration: ${JWT_EXPIRATION:86400}
 
 # 文件上传路径

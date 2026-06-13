@@ -18,7 +18,8 @@ const form = reactive<RegisterRequest>({
   phone: '',
   email: '',
   studentNo: '',
-  department: ''
+  department: '',
+  title: ''
 })
 
 const confirmPassword = ref('')
@@ -73,6 +74,12 @@ const validateForm = () => {
   // 学生角色必须填写学号
   if (form.role === 'STUDENT' && !form.studentNo?.trim()) {
     errorMessage.value = '请输入学号'
+    return false
+  }
+
+  // 教师角色必须填写职称
+  if (form.role === 'TEACHER' && !form.title?.trim()) {
+    errorMessage.value = '请输入职称'
     return false
   }
   
@@ -187,15 +194,24 @@ const goToLogin = () => {
               <option value="TEACHER">老师</option>
             </select>
           </div>
-          
-          <div class="form-item">
-            <label for="studentNo">学号</label>
-            <input 
+
+          <div class="form-item" v-if="form.role === 'STUDENT'">
+            <label for="studentNo">学号 *</label>
+            <input
               id="studentNo"
               v-model="form.studentNo"
-              type="text" 
+              type="text"
               placeholder="学生必填"
-              :disabled="form.role !== 'STUDENT'"
+            />
+          </div>
+
+          <div class="form-item" v-if="form.role === 'TEACHER'">
+            <label for="title">职称 *</label>
+            <input
+              id="title"
+              v-model="form.title"
+              type="text"
+              placeholder="如：讲师/副教授/教授"
             />
           </div>
         </div>

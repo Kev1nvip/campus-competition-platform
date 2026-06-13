@@ -20,11 +20,11 @@ public class ErrorCode {
     // ================================
     // 用户模块
     // ================================
-    public static final int USER_PASSWORD_ERROR = 40101;
-    public static final int USER_DISABLED       = 40102;
-    public static final int USER_NAME_EXISTS    = 40103;
-    public static final int STUDENT_NO_EXISTS   = 40104;
-    public static final int USER_NOT_FOUND      = 40105;
+    public static final int USER_PASSWORD_ERROR = 40110;
+    public static final int USER_DISABLED       = 40111;
+    public static final int USER_NAME_EXISTS    = 40112;
+    public static final int STUDENT_NO_EXISTS   = 40113;
+    public static final int USER_NOT_FOUND      = 40114;
 
     // ================================
     // 竞赛模块

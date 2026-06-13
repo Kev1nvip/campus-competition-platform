@@ -1,24 +1,19 @@
-import axios from 'axios'
-const service = axios.create({
-  baseURL: '/api',
-  timeout: 6000
-})
+import request from '@/utils/request'
 
-// 管理员登录
-export const adminLogin = (data: { account: string; pwd: string }) => {
-  return service.post('/admin/login', data)
-}
+export const adminLogin = (data: { username: string; password: string }) =>
+  request({ url: '/v1/auth/login', method: 'POST', data })
 
-// 用户管理-列表
-export const getUserList = () => service.get('/admin/user/list')
-// 新增用户
-export const addUser = (data: any) => service.post('/admin/user/add', data)
+export const getUserList = () =>
+  request({ url: '/v1/admin/user/list', method: 'GET' })
 
-// 竞赛管理列表
-export const getCompAllList = () => service.get('/admin/comp/list')
+export const addUser = (data: any) =>
+  request({ url: '/v1/admin/user/add', method: 'POST', data })
 
-// 院系、专业接口
-export const getDeptList = () => service.get('/admin/dept/list')
+export const getCompAllList = () =>
+  request({ url: '/v1/admin/comp/list', method: 'GET' })
 
-// 统计数据
-export const getStatData = () => service.get('/admin/stat')
+export const getDeptList = () =>
+  request({ url: '/v1/admin/dept/list', method: 'GET' })
+
+export const getStatData = () =>
+  request({ url: '/v1/admin/stat', method: 'GET' })

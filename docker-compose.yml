@@ -94,7 +94,7 @@ services:
       RABBITMQ_USERNAME: competition
       RABBITMQ_PASSWORD: competition123
       # JWT
-      JWT_SECRET: campus-competition-jwt-secret-key-2024
+      JWT_SECRET: campus-competition-platform-jwt-secret-key-for-production-environment-2026
       JWT_EXPIRATION: 7200
       # 文件上传
       UPLOAD_PATH: /app/uploads

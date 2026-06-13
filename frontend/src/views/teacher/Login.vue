@@ -1,55 +1,49 @@
 <template>
   <div class="login-box">
     <h2>教师后台登录</h2>
-    <input v-model="form.tid" placeholder="教师工号" />
-    <input v-model="form.pwd" type="password" placeholder="密码" />
-    <button @click="login">登录</button>
+    <input v-model="form.username" placeholder="用户名" />
+    <input v-model="form.password" type="password" placeholder="密码" />
+    <button @click="handleLogin">登录</button>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTeacherStore } from '@/store/userTeacher'
-import { teacherLogin } from '@/api/teacher'
+import { login } from '@/api/auth'
 
 const router = useRouter()
 const teacherStore = useTeacherStore()
-const form = ref({ tid: '', pwd: '' })
+const form = reactive({ username: '', password: '' })
 
-// 测试账号：工号111111，密码111111
-const TEST_TEACHER = {
-  tid: "111111",
-  pwd: "111111",
-  mockData: {
-    id: "t001",
-    name: "测试指导教师",
-    tid: "111111"
-  }
-}
-
-const login = async () => {
-  if (!form.value.tid || !form.value.pwd) {
-    alert('工号、密码不能为空')
-    return
-  }
-
-  if (form.value.tid === TEST_TEACHER.tid && form.value.pwd === TEST_TEACHER.pwd) {
-    teacherStore.setUser(TEST_TEACHER.mockData)
-    router.push('/teacher/competition')
+const handleLogin = async () => {
+  if (!form.username || !form.password) {
+    alert('用户名、密码不能为空')
     return
   }
 
   try {
-    const res = await teacherLogin(form.value)
-    if (res.code === 200) {
-      teacherStore.setUser(res.data)
+    const res: any = await login(form)
+    if (res.code === 0) {
+      const { userInfo, token } = res.data
+      if (userInfo.role !== 'TEACHER') {
+        alert('该账号不是教师账号')
+        return
+      }
+      localStorage.setItem('token', token)
+      localStorage.setItem('userInfo', JSON.stringify(userInfo))
+      teacherStore.setUser({
+        id: String(userInfo.userId),
+        name: userInfo.realName,
+        tid: userInfo.username
+      })
       router.push('/teacher/competition')
     } else {
-      alert(res.msg || '工号或密码错误')
+      alert(res.message || '用户名或密码错误')
     }
   } catch (err) {
-    alert('后端服务未启动/接口请求失败，请检查服务')
+    alert('登录失败，请检查后端服务是否启动')
     console.error('登录接口异常', err)
   }
 }
