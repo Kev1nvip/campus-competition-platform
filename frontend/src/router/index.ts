@@ -64,7 +64,7 @@ const routes: RouteRecordRaw[] = [
   },
   // ========== 你（队友B）负责：教师端、管理员路由 ==========
   ...teacherRoutes,
-  ...adminRoutes
+  ...adminRoutes,
   {
     path: '/ai-recommend',
     name: 'AiRecommend',
