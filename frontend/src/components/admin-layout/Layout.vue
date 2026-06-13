@@ -29,6 +29,10 @@
             <el-icon><Trophy /></el-icon>
             <span>录入获奖</span>
           </el-menu-item>
+          <el-menu-item index="/teacher/profile">
+            <el-icon><User /></el-icon>
+            <span>个人中心</span>
+          </el-menu-item>
         </template>
 
         <template v-if="role === 'admin'">
@@ -91,6 +95,7 @@ const titleMap: Record<string, string> = {
   '/teacher/apply': '报名审核',
   '/teacher/team': '队伍管理',
   '/teacher/award': '录入获奖',
+  '/teacher/profile': '个人中心',
   '/admin/user': '用户管理',
   '/admin/competition': '竞赛管理',
   '/admin/dept': '院系管理',

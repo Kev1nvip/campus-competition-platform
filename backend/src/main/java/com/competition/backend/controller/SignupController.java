@@ -5,14 +5,22 @@ import com.competition.backend.common.result.Result;
 import com.competition.backend.dto.IndividualSignupDTO;
 import com.competition.backend.dto.SignupSubmitDTO;
 import com.competition.backend.entity.IndividualSignup;
+import com.competition.backend.repository.CompetitionRepository;
+import com.competition.backend.repository.IndividualSignupRepository;
+import com.competition.backend.repository.SysUserRepository;
 import com.competition.backend.service.SignupService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Tag(name = "报名模块")
@@ -22,6 +30,9 @@ import java.util.Map;
 public class SignupController {
 
     private final SignupService signupService;
+    private final IndividualSignupRepository individualSignupRepository;
+    private final SysUserRepository userRepository;
+    private final CompetitionRepository competitionRepository;
 
     @Operation(summary = "个人赛报名")
     @PostMapping("/individual")
@@ -46,6 +57,41 @@ public class SignupController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String status) {
         return Result.success(signupService.getMyIndividualSignups(page, size, status));
+    }
+
+    @Operation(summary = "管理员查询待审核个人赛报名列表（含关联信息）")
+    @GetMapping("/individual/pending")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Result<PageVO<Map<String, Object>>> adminPendingList(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Page<IndividualSignup> pageResult = individualSignupRepository.findByStatusIn(
+                List.of("PENDING", "RESUBMITTED"),
+                PageRequest.of(page - 1, size, Sort.by(Sort.Direction.ASC, "submittedAt")));
+
+        return Result.success(PageVO.of(pageResult, signup -> {
+            Map<String, Object> item = new HashMap<>();
+            item.put("id", signup.getId());
+            item.put("competitionId", signup.getCompetitionId());
+            item.put("studentId", signup.getStudentId());
+            item.put("teacherId", signup.getTeacherId());
+            item.put("status", signup.getStatus());
+            item.put("submittedAt", signup.getSubmittedAt());
+            item.put("rejectReason", signup.getRejectReason());
+            // 关联学生信息
+            userRepository.findById(signup.getStudentId()).ifPresent(u -> {
+                item.put("studentName", u.getRealName());
+                item.put("studentNo", u.getStudentNo());
+                item.put("department", u.getDepartment());
+            });
+            // 关联竞赛信息
+            competitionRepository.findById(signup.getCompetitionId()).ifPresent(c ->
+                    item.put("competitionTitle", c.getTitle()));
+            // 关联老师信息
+            userRepository.findById(signup.getTeacherId()).ifPresent(u ->
+                    item.put("teacherName", u.getRealName()));
+            return item;
+        }));
     }
 
     @Operation(summary = "创建团队赛报名草稿")

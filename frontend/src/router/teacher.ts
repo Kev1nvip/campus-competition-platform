@@ -26,6 +26,11 @@ export const teacherRoutes: RouteRecordRaw[] = [
         path: 'award',
         name: 'TeacherAward',
         component: () => import('@/views/teacher/AwardInput.vue')
+      },
+      {
+        path: 'profile',
+        name: 'TeacherProfile',
+        component: () => import('@/views/teacher/Profile.vue')
       }
     ]
   }

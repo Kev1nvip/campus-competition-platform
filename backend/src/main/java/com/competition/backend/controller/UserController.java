@@ -65,4 +65,14 @@ public class UserController {
             @RequestParam(required = false) String keyword) {
         return Result.success(userService.listTeachers(page, size, keyword));
     }
+
+    @Operation(summary = "管理员禁用或启用用户")
+    @PutMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Result<Void> toggleStatus(
+            @PathVariable Long id,
+            @RequestParam String status) {
+        userService.toggleUserStatus(id, status);
+        return Result.success();
+    }
 }

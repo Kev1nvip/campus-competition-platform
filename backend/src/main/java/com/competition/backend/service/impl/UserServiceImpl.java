@@ -177,4 +177,16 @@ public class UserServiceImpl implements UserService {
             return vo;
         });
     }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void toggleUserStatus(Long userId, String status) {
+        if (!"ACTIVE".equals(status) && !"DISABLED".equals(status)) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR, "状态只能是 ACTIVE 或 DISABLED");
+        }
+        SysUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND, "用户不存在"));
+        user.setStatus(status);
+        userRepository.save(user);
+    }
 }

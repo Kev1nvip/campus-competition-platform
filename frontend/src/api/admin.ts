@@ -11,6 +11,10 @@ export const getUserList = (params?: { page?: number; size?: number; keyword?: s
 export const addUser = (data: any) =>
   request({ url: '/v1/auth/register', method: 'POST', data })
 
+// 禁用/启用用户
+export const toggleUserStatus = (id: number, status: 'ACTIVE' | 'DISABLED') =>
+  request({ url: `/v1/user/${id}/status`, method: 'PUT', params: { status } })
+
 // 竞赛管理 — 实际后端路由: GET /api/v1/competitions
 export const getCompAllList = (params?: { page?: number; size?: number }) =>
   request({ url: '/v1/competitions', method: 'GET', params: { page: 1, size: 100, ...params } })

@@ -28,9 +28,16 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="100">
-        <template #default="{ row }">
-          <el-button size="small" text @click="ElMessage.info('编辑功能待完善')">编辑</el-button>
+      <el-table-column label="操作" width="160">
+        <template #default="{ row }: { row: any }">
+          <el-button
+            size="small"
+            :type="row.status === 'ACTIVE' ? 'danger' : 'success'"
+            text
+            @click="handleToggleStatus(row)"
+          >
+            {{ row.status === 'ACTIVE' ? '禁用' : '启用' }}
+          </el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -59,7 +66,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { getUserList, addUser } from '@/api/admin'
+import { getUserList, addUser, toggleUserStatus } from '@/api/admin'
 
 const list = ref<any[]>([])
 const isLoading = ref(false)
@@ -97,6 +104,23 @@ const handleAdd = async () => {
     }
   } catch {
     ElMessage.error('网络错误')
+  }
+}
+
+const handleToggleStatus = async (row: any) => {
+  const newStatus = row.status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE'
+  const label = newStatus === 'DISABLED' ? '禁用' : '启用'
+  try {
+    await ElMessageBox.confirm(`确认${label}用户「${row.realName}」？`, '操作确认', { type: 'warning' })
+    const res: any = await toggleUserStatus(row.id, newStatus)
+    if (res.code === 0) {
+      ElMessage.success(`已${label}`)
+      loadData()
+    } else {
+      ElMessage.error(res.message || '操作失败')
+    }
+  } catch (e: any) {
+    if (e !== 'cancel') ElMessage.error('操作失败')
   }
 }
 
