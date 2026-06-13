@@ -10,4 +10,6 @@ public interface IndividualSignupRepository extends JpaRepository<IndividualSign
     boolean existsByCompetitionIdAndStudentId(Long competitionId, Long studentId);
     Page<IndividualSignup> findByStudentId(Long studentId, Pageable pageable);
     Page<IndividualSignup> findByStudentIdAndStatus(Long studentId, String status, Pageable pageable);
+    // 管理员：查询指定状态的报名（PENDING + RESUBMITTED）
+    Page<IndividualSignup> findByStatusIn(java.util.List<String> statuses, Pageable pageable);
 }

@@ -1,921 +1,515 @@
-<!--
-  组件：队伍详情页面
-  说明：提供队伍详情展示、队员管理、邀请队友等功能
--->
 <template>
-  <div class="team-detail-container">
-    <!-- 返回按钮 -->
-    <div class="back-btn-wrapper">
-      <button class="back-btn" @click="goBack">
-        <span class="back-icon">←</span>
-        返回队伍列表
-      </button>
-    </div>
+  <div>
+    <div class="back-link" @click="router.push('/student/my-teams')">← 返回我的队伍</div>
 
-    <!-- 队伍信息卡片 -->
-    <div class="team-info-card">
-      <div class="card-header">
-        <div class="team-name-wrapper">
-          <h1 class="team-name">{{ teamDetail.teamName }}</h1>
-          <span :class="['team-status', getStatusClass(teamDetail.status)]">
-            {{ teamStatusMap[teamDetail.status] }}
-          </span>
+    <div v-if="isLoading" class="center-tip">加载中...</div>
+    <div v-else-if="!team" class="center-tip">队伍不存在</div>
+
+    <template v-else>
+      <!-- 标题区 -->
+      <div class="detail-head">
+        <div class="head-left">
+          <h2>{{ team.teamName }}</h2>
+          <el-tag size="small" :type="statusTagType(team.status)">{{ statusText(team.status) }}</el-tag>
+        </div>
+        <div class="head-actions">
+          <!-- 队长：申请老师带队（未有老师时） -->
+          <el-button
+            v-if="currentUserRole === 'LEADER' && !team.teacherConfirmed && team.status === 'FORMING'"
+            size="small"
+            @click="showSelectTeacher = true"
+          >
+            申请老师带队
+          </el-button>
+          <!-- 队长：可邀请队友（老师已确认） -->
+          <el-button
+            v-if="currentUserRole === 'LEADER' && team.status === 'FORMING'"
+            size="small"
+            type="primary"
+            @click="showInvite = true"
+          >
+            邀请队友
+          </el-button>
+          <!-- 队员：可退出（FORMING/FULL 状态） -->
+          <el-button
+            v-if="currentUserRole === 'MEMBER' && (team.status === 'FORMING' || team.status === 'FULL')"
+            size="small"
+            @click="handleQuit"
+          >
+            退出队伍
+          </el-button>
+          <!-- 非成员：可申请加入（FORMING 状态） -->
+          <el-button
+            v-if="currentUserRole === 'NONE' && team.status === 'FORMING'"
+            size="small"
+            type="primary"
+            :loading="applying"
+            @click="showApply = true"
+          >
+            申请加入
+          </el-button>
         </div>
       </div>
-      
-      <div class="card-body">
-        <!-- 基本信息 -->
-        <div class="info-grid">
-          <div class="info-item">
-            <span class="info-label">所属竞赛</span>
-            <span class="info-value">{{ teamDetail.competitionTitle }}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">队长</span>
-            <span class="info-value">{{ teamDetail.leaderName }}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">指导老师</span>
-            <span class="info-value">{{ teamDetail.teacherName || '未指定' }}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">队伍人数</span>
-            <span class="info-value">{{ teamDetail.memberCount }} / {{ teamDetail.maxTeamSize ?? '-' }}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">创建时间</span>
-            <span class="info-value">{{ formatDate(teamDetail.createdAt) }}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">更新时间</span>
-            <span class="info-value">{{ formatDate(teamDetail.updatedAt) }}</span>
+
+      <el-divider />
+
+      <!-- 基本信息 -->
+      <div class="info-grid">
+        <div class="info-block">
+          <div class="info-label">关联竞赛</div>
+          <div class="info-val">{{ team.competitionTitle || `竞赛 #${team.competitionId}` }}</div>
+        </div>
+        <div class="info-block">
+          <div class="info-label">竞赛类型</div>
+          <div class="info-val">{{ team.competitionType === 'TEAM' ? '团队赛' : '个人赛' }}</div>
+        </div>
+        <div class="info-block">
+          <div class="info-label">队伍人数</div>
+          <div class="info-val">
+            {{ team.memberCount }} 人
+            <span v-if="team.minTeamSize" class="sub">
+              （要求 {{ team.minTeamSize }}–{{ team.maxTeamSize }} 人）
+            </span>
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- 队员列表 -->
-    <div class="members-section">
-      <div class="section-header">
-        <h2 class="section-title">队员列表</h2>
-        <button 
-          v-if="canInviteMember"
-          class="invite-btn"
-          @click="showInviteModal = true"
-        >
-          邀请队友
-        </button>
-      </div>
-      
-      <div class="members-list">
-        <div 
-          v-for="member in teamDetail.members" 
-          :key="member.id" 
-          class="member-card"
-        >
-          <div class="member-info">
-            <div class="member-avatar">
-              {{ member.studentName.charAt(0) }}
-            </div>
-            <div class="member-detail">
-              <div class="member-name">
-                {{ member.studentName }}
-                <span v-if="member.role === 'LEADER'" class="leader-badge">队长</span>
-              </div>
-              <div class="member-meta">
-                {{ member.studentNo }} · {{ member.department }}
-              </div>
-              <div class="member-joined">加入于 {{ formatDate(member.joinedAt) }}</div>
-            </div>
-          </div>
-          
-          <div class="member-actions">
-            <button 
-              v-if="isLeader && member.role !== 'LEADER'"
-              class="action-btn remove-btn"
-              @click="handleRemoveMember(member)"
-            >
-              移除
-            </button>
-            <button 
-              v-if="!isLeader && member.role === 'MEMBER'"
-              class="action-btn leave-btn"
-              @click="handleLeaveTeam"
-            >
-              退出队伍
-            </button>
+        <div class="info-block">
+          <div class="info-label">队长</div>
+          <div class="info-val">{{ team.leaderName }}</div>
+        </div>
+        <div class="info-block">
+          <div class="info-label">指导老师</div>
+          <div class="info-val">
+            <span v-if="team.teacherName">
+              {{ team.teacherName }}
+              <span v-if="team.teacherTitle" class="sub">{{ team.teacherTitle }}</span>
+              <el-tag v-if="team.teacherConfirmed" size="small" type="success" style="margin-left:6px;">已确认</el-tag>
+              <el-tag v-else size="small" type="warning" style="margin-left:6px;">待确认</el-tag>
+            </span>
+            <span v-else class="none-text">暂未分配</span>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- 队伍操作 -->
-    <div class="team-actions-section">
-      <button 
-        v-if="isLeader && teamDetail.status === 'FORMING'"
-        class="action-btn primary-btn"
-        @click="handleDismissTeam"
-      >
-        解散队伍
-      </button>
-    </div>
+      <el-divider />
+
+      <!-- 成员列表 -->
+      <div class="section">
+        <div class="section-title">成员列表</div>
+        <div v-if="!team.members || team.members.length === 0" class="center-tip" style="padding:20px;">
+          暂无成员记录
+        </div>
+        <el-table v-else :data="team.members" class="member-table">
+          <el-table-column label="姓名" prop="realName" width="120" />
+          <el-table-column label="学号" prop="studentNo" width="140" />
+          <el-table-column label="院系" prop="department" />
+          <el-table-column label="角色" prop="role" width="90">
+            <template #default="{ row }: { row: any }">
+              <el-tag size="small" :type="row.role === 'LEADER' ? '' : 'info'">
+                {{ row.role === 'LEADER' ? '队长' : '队员' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="加入时间" prop="joinedAt" width="140">
+            <template #default="{ row }: { row: any }">
+              {{ row.joinedAt ? new Date(row.joinedAt).toLocaleDateString('zh-CN') : '—' }}
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </template>
 
     <!-- 邀请队友弹窗 -->
-    <div v-if="showInviteModal" class="modal-overlay" @click.self="showInviteModal = false">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3>邀请队友</h3>
-          <button class="close-btn" @click="showInviteModal = false">×</button>
-        </div>
-        <div class="modal-body">
-          <div class="form-item">
-            <label class="form-label">搜索学号或姓名 <span class="required">*</span></label>
-            <input
-              v-model="inviteForm.keyword"
-              type="text"
-              class="form-input"
-              placeholder="请输入学号或姓名"
-              maxlength="50"
-              @input="handleSearchStudents"
-            />
-            <span v-if="inviteErrors.keyword" class="error-message">{{ inviteErrors.keyword }}</span>
-          </div>
-          
-          <!-- 搜索结果 -->
-          <div v-if="searchResults.length > 0" class="search-results">
-            <div 
-              v-for="student in searchResults" 
-              :key="student.userId"
-              class="search-item"
-              :class="{ selected: inviteForm.selectedStudent?.userId === student.userId }"
-              @click="selectStudent(student)"
-            >
-              <div class="search-item-avatar">{{ student.realName.charAt(0) }}</div>
-              <div class="search-item-info">
-                <div class="search-item-name">{{ student.realName }}</div>
-                <div class="search-item-meta">{{ student.studentNo }} · {{ student.department }}</div>
-              </div>
-              <div v-if="inviteForm.selectedStudent?.userId === student.userId" class="check-icon">✓</div>
-            </div>
-          </div>
-          
-          <div v-if="isSearching" class="search-loading">搜索中...</div>
-          <div v-if="!isSearching && inviteForm.keyword && searchResults.length === 0" class="search-empty">未找到匹配的学生</div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn-cancel" @click="showInviteModal = false">取消</button>
-          <button 
-            class="btn-confirm"
-            :disabled="isInviting || !inviteForm.selectedStudent"
-            @click="handleInviteMember"
+    <el-dialog v-model="showInvite" title="邀请队友" width="400px">
+      <el-form @submit.prevent label-width="80px">
+        <el-form-item label="学号/姓名">
+          <el-input
+            v-model="inviteKeyword"
+            placeholder="输入学号或姓名搜索"
+            clearable
+            @keydown.enter.prevent="searchStudent"
           >
-            {{ isInviting ? '邀请中...' : '发送邀请' }}
-          </button>
+            <template #append>
+              <el-button @click="searchStudent" :loading="searching">搜索</el-button>
+            </template>
+          </el-input>
+        </el-form-item>
+        <div v-if="searchResults.length > 0" class="search-results">
+          <div
+            v-for="s in searchResults"
+            :key="s.id"
+            class="student-card"
+            :class="{ selected: selectedStudent?.id === s.id }"
+            @click="selectedStudent = s"
+          >
+            <div>
+              <div class="s-name">{{ s.realName }}</div>
+              <div class="s-no">{{ s.studentNo }} · {{ s.department }}</div>
+            </div>
+            <span v-if="selectedStudent?.id === s.id" class="check-icon">✓</span>
+          </div>
+        </div>
+        <div v-else-if="searched && searchResults.length === 0" class="no-result">未找到该学生</div>
+      </el-form>
+      <template #footer>
+        <el-button @click="closeInvite">取消</el-button>
+        <el-button type="primary" :disabled="!selectedStudent" :loading="inviting" @click="sendInvite">
+          发送邀请
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 申请加入弹窗 -->
+    <el-dialog v-model="showApply" title="申请加入队伍" width="380px">
+      <el-form label-width="80px">
+        <el-form-item label="申请理由">
+          <el-input v-model="applyMotivation" type="textarea" :rows="3" placeholder="选填，向队长介绍自己" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showApply = false">取消</el-button>
+        <el-button type="primary" :loading="applying" @click="submitApply">提交申请</el-button>
+      </template>
+    </el-dialog>
+    <!-- 申请老师带队弹窗 -->
+    <el-dialog v-model="showSelectTeacher" title="申请老师带队" width="420px">
+      <div class="teacher-search">
+        <el-input
+          v-model="teacherKeyword"
+          placeholder="搜索老师姓名或院系..."
+          clearable
+          @input="fetchTeachersForGuide"
+          size="small"
+        />
+      </div>
+      <div v-if="teacherListLoading" class="tip">加载中...</div>
+      <div v-else-if="teacherList.length === 0" class="tip">暂无可选老师</div>
+      <div v-else class="teacher-list-select">
+        <div
+          v-for="t in teacherList"
+          :key="t.id"
+          :class="['teacher-opt', selectedTeacherForGuide?.id === t.id ? 'selected' : '']"
+          @click="selectedTeacherForGuide = t"
+        >
+          <div class="t-name">{{ t.realName }} <span class="t-title">{{ t.title }}</span></div>
+          <div class="t-dept">{{ t.department }}</div>
+          <span v-if="selectedTeacherForGuide?.id === t.id" class="check-icon">✓</span>
         </div>
       </div>
-    </div>
+      <template #footer>
+        <el-button @click="showSelectTeacher = false">取消</el-button>
+        <el-button
+          type="primary"
+          :disabled="!selectedTeacherForGuide"
+          :loading="applyingTeacher"
+          @click="submitApplyTeacher"
+        >
+          发送申请
+        </el-button>
+      </template>
+    </el-dialog>
+
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { teamApi } from '@/api/team'
-import { userApi } from '@/api/user'
-import type { TeamDetailVO, TeamMemberVO, TeamStatus } from '@/types/team'
-import { teamStatusMap } from '@/types/team'
-import type { StudentInfo } from '@/api/user'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import request from '@/utils/request'
 
-// ================================
-// 路由
-// ================================
 const route = useRoute()
 const router = useRouter()
 
-// ================================
-// 状态
-// ================================
-const teamDetail = ref<TeamDetailVO>({
-  id: 0,
-  competitionId: 0,
-  competitionTitle: '',
-  teamName: '',
-  leaderId: 0,
-  leaderName: '',
-  teacherId: undefined,
-  teacherName: undefined,
-  teacherConfirmed: false,
-  memberCount: 0,
-  minTeamSize: 1,
-  maxTeamSize: 5,
-  status: 'FORMING',
-  createdAt: '',
-  updatedAt: '',
-  members: []
-})
-
+const team = ref<any>(null)
 const isLoading = ref(false)
-const showInviteModal = ref(false)
-const isInviting = ref(false)
-const isSearching = ref(false)
-const currentUserId = ref(1)
 
-// 邀请表单
-const inviteForm = ref({
-  keyword: '',
-  selectedStudent: null as StudentInfo | null
+// 当前用户 ID
+const currentUserId = computed(() => {
+  const info = localStorage.getItem('userInfo')
+  return info ? Number(JSON.parse(info).userId) : null
 })
 
-const inviteErrors = ref({
-  keyword: ''
+// 当前用户在队伍中的角色（兼容旧数据）
+const currentUserRole = computed(() => {
+  if (!team.value) return 'NONE'
+  // 优先使用后端返回的角色
+  const serverRole = team.value.currentUserRole
+  if (serverRole === 'LEADER' || serverRole === 'MEMBER') return serverRole
+  // 后端返回 NONE 时，再用 leaderId 二次判断（兼容 Bug1 修复前的旧数据）
+  if (currentUserId.value && team.value.leaderId === currentUserId.value) return 'LEADER'
+  return 'NONE'
 })
 
-// 搜索结果
-const searchResults = ref<StudentInfo[]>([])
+// 邀请
+const showInvite = ref(false)
+const inviteKeyword = ref('')
+const searchResults = ref<any[]>([])
+const selectedStudent = ref<any>(null)
+const searched = ref(false)
+const searching = ref(false)
+const inviting = ref(false)
 
-// ================================
-// 计算属性
-// ================================
-// 是否是队长
-const isLeader = computed(() => {
-  return teamDetail.value.leaderId === currentUserId.value
-})
+// 申请加入
+const showApply = ref(false)
+const applyMotivation = ref('')
+const applying = ref(false)
 
-// 是否可以邀请队友
-const canInviteMember = computed(() => {
-  return isLeader.value && 
-         teamDetail.value.status === 'FORMING' && 
-         teamDetail.value.memberCount < (teamDetail.value.maxTeamSize ?? Infinity)
-})
+// 申请老师带队
+const showSelectTeacher = ref(false)
+const teacherKeyword = ref('')
+const teacherList = ref<any[]>([])
+const teacherListLoading = ref(false)
+const selectedTeacherForGuide = ref<any>(null)
+const applyingTeacher = ref(false)
 
-// ================================
-// 方法
-// ================================
-/**
- * 获取状态样式类
- */
-const getStatusClass = (status: TeamStatus) => {
-  const classMap: Record<TeamStatus, string> = {
-    FORMING: 'status-forming',
-    FULL: 'status-full',
-    SUBMITTED: 'status-submitted',
-    APPROVED: 'status-approved',
-    REJECTED: 'status-rejected',
-    DISMISSED: 'status-dismissed'
-  }
-  return classMap[status]
-}
+const statusText = (s: string) => (({
+  FORMING: '招募中', FULL: '已满员', SUBMITTED: '已提交',
+  APPROVED: '已通过', REJECTED: '已驳回', DISMISSED: '已解散'
+} as Record<string, string>)[s] ?? s)
 
-/**
- * 格式化日期
- */
-const formatDate = (dateStr: string) => {
-  if (!dateStr) return '-'
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
+const statusTagType = (s: string) => (({
+  FORMING: 'success', FULL: 'info', SUBMITTED: 'warning',
+  APPROVED: '', REJECTED: 'danger', DISMISSED: 'info'
+} as Record<string, any>)[s] ?? 'info')
 
-/**
- * 返回队伍列表
- */
-const goBack = () => {
-  router.push('/teams')
-}
-
-/**
- * 获取队伍详情
- */
-const fetchTeamDetail = async () => {
-  const teamId = Number(route.params.id)
-  if (!teamId) return
-  
+const fetchTeam = async () => {
   isLoading.value = true
   try {
-    const response = await teamApi.getTeamDetail(teamId)
-    if (response.code === 0) {
-      teamDetail.value = response.data
+    const res: any = await request({ url: `/v1/team/${route.params.id}`, method: 'GET' })
+    if (res.code === 0) {
+      team.value = res.data
+    } else {
+      ElMessage.error(res.message || '加载失败')
     }
-  } catch (error) {
-    console.error('获取队伍详情失败:', error)
+  } catch {
+    ElMessage.error('网络错误')
   } finally {
     isLoading.value = false
   }
 }
 
-/**
- * 搜索学生
- */
-const handleSearchStudents = async () => {
-  const keyword = inviteForm.value.keyword.trim()
-  if (!keyword) {
-    searchResults.value = []
-    return
-  }
-  
-  isSearching.value = true
+const handleQuit = async () => {
   try {
-    const response = await userApi.searchStudents(keyword)
-    if (response.code === 0) {
-      // 过滤掉已经在队伍中的成员
-      const memberStudentIds = teamDetail.value.members.map(m => m.studentId)
-      searchResults.value = response.data.filter(s => !memberStudentIds.includes(s.userId))
+    await ElMessageBox.confirm('确认退出该队伍？', '提示', { type: 'warning' })
+    const res: any = await request({ url: `/v1/team/${route.params.id}/quit`, method: 'DELETE' })
+    if (res.code === 0) {
+      ElMessage.success('已退出队伍')
+      router.push('/student/my-teams')
     } else {
-      searchResults.value = []
+      ElMessage.error(res.message || '操作失败')
     }
-  } catch (error) {
-    console.error('搜索学生失败:', error)
-    searchResults.value = []
-  } finally {
-    isSearching.value = false
+  } catch (e: any) {
+    if (e !== 'cancel' && e?.message !== 'cancel') ElMessage.error('操作失败')
   }
 }
 
-/**
- * 选择学生
- */
-const selectStudent = (student: StudentInfo) => {
-  inviteForm.value.selectedStudent = student
-}
-
-/**
- * 邀请队员
- */
-const handleInviteMember = async () => {
-  inviteErrors.value = { keyword: '' }
-  
-  if (!inviteForm.value.selectedStudent) {
-    inviteErrors.value.keyword = '请选择要邀请的学生'
-    return
-  }
-  
-  isInviting.value = true
+const searchStudent = async () => {
+  if (!inviteKeyword.value.trim()) return
+  searching.value = true
+  searched.value = false
   try {
-    const response = await teamApi.inviteMember({
-      teamId: teamDetail.value.id,
-      studentId: inviteForm.value.selectedStudent.userId
+    const res: any = await request({
+      url: '/v1/team/search-student',
+      method: 'GET',
+      params: { keyword: inviteKeyword.value.trim() }
     })
-    
-    if (response.code === 0) {
-      alert('邀请已发送')
-      showInviteModal.value = false
-      inviteForm.value.keyword = ''
-      inviteForm.value.selectedStudent = null
+    if (res.code === 0) {
+      searchResults.value = res.data ?? []
+    } else {
       searchResults.value = []
-      fetchTeamDetail()
-    } else {
-      alert(response.message || '邀请失败')
+      ElMessage.error(res.message || '搜索失败')
     }
-  } catch (error) {
-    console.error('邀请失败:', error)
-    alert('邀请失败，请稍后重试')
+  } catch {
+    searchResults.value = []
+    ElMessage.error('搜索失败')
   } finally {
-    isInviting.value = false
+    searching.value = false
+    searched.value = true
   }
 }
 
-/**
- * 移除队员
- */
-const handleRemoveMember = async (member: TeamMemberVO) => {
-  if (!confirm(`确定要移除 ${member.studentName} 吗？`)) return
-  
+const closeInvite = () => {
+  showInvite.value = false
+  inviteKeyword.value = ''
+  searchResults.value = []
+  selectedStudent.value = null
+  searched.value = false
+}
+
+const sendInvite = async () => {
+  if (!selectedStudent.value) return
+  inviting.value = true
   try {
-    const response = await teamApi.removeMember(teamDetail.value.id, member.studentId)
-    if (response.code === 0) {
-      alert('移除成功')
-      fetchTeamDetail()
+    const res: any = await request({
+      url: `/v1/team/${route.params.id}/invite`,
+      method: 'POST',
+      params: { targetUserId: selectedStudent.value.id }
+    })
+    if (res.code === 0) {
+      ElMessage.success(`已向 ${selectedStudent.value.realName} 发送邀请`)
+      closeInvite()
     } else {
-      alert(response.message || '移除失败')
+      ElMessage.error(res.message || '邀请失败')
     }
-  } catch (error) {
-    console.error('移除队员失败:', error)
-    alert('移除失败，请稍后重试')
+  } catch {
+    ElMessage.error('网络错误')
+  } finally {
+    inviting.value = false
   }
 }
 
-/**
- * 退出队伍
- */
-const handleLeaveTeam = async () => {
-  if (!confirm('确定要退出队伍吗？')) return
-  
+const submitApply = async () => {
+  applying.value = true
   try {
-    const response = await teamApi.leaveTeam(teamDetail.value.id)
-    if (response.code === 0) {
-      alert('退出成功')
-      router.push('/teams')
+    const res: any = await request({
+      url: `/v1/team/${route.params.id}/apply`,
+      method: 'POST',
+      data: { motivation: applyMotivation.value || null }
+    })
+    if (res.code === 0) {
+      ElMessage.success('申请已提交，等待队长审核')
+      showApply.value = false
+      applyMotivation.value = ''
     } else {
-      alert(response.message || '退出失败')
+      ElMessage.error(res.message || '申请失败')
     }
-  } catch (error) {
-    console.error('退出队伍失败:', error)
-    alert('退出失败，请稍后重试')
+  } catch {
+    ElMessage.error('网络错误')
+  } finally {
+    applying.value = false
   }
 }
 
-/**
- * 解散队伍
- */
-const handleDismissTeam = async () => {
-  if (!confirm('确定要解散队伍吗？此操作不可撤销！')) return
-  
+const fetchTeachersForGuide = async () => {
+  teacherListLoading.value = true
   try {
-    const response = await teamApi.dismissTeam(teamDetail.value.id)
-    if (response.code === 0) {
-      alert('队伍已解散')
-      router.push('/teams')
-    } else {
-      alert(response.message || '解散失败')
-    }
-  } catch (error) {
-    console.error('解散队伍失败:', error)
-    alert('解散失败，请稍后重试')
+    const res: any = await request({ url: '/v1/user/teachers', method: 'GET', params: { keyword: teacherKeyword.value || undefined, page: 1, size: 50 } })
+    if (res.code === 0) teacherList.value = res.data?.list ?? []
+  } finally {
+    teacherListLoading.value = false
   }
 }
 
-// ================================
-// 生命周期
-// ================================
-onMounted(() => {
-  fetchTeamDetail()
+const submitApplyTeacher = async () => {
+  if (!selectedTeacherForGuide.value) return
+  applyingTeacher.value = true
+  try {
+    const res: any = await request({
+      url: `/v1/team/${route.params.id}/apply-teacher`,
+      method: 'POST',
+      params: { teacherId: selectedTeacherForGuide.value.id }
+    })
+    if (res.code === 0) {
+      ElMessage.success(`已向 ${selectedTeacherForGuide.value.realName} 发送带队申请`)
+      showSelectTeacher.value = false
+      selectedTeacherForGuide.value = null
+      teacherKeyword.value = ''
+    } else {
+      ElMessage.error(res.message || '申请失败')
+    }
+  } catch {
+    ElMessage.error('网络错误')
+  } finally {
+    applyingTeacher.value = false
+  }
+}
+
+onMounted(async () => {
+  fetchTeam()
+  fetchTeachersForGuide()
 })
 </script>
 
 <style scoped>
-.team-detail-container {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 24px;
-}
-
-.back-btn-wrapper {
+.back-link {
+  font-size: 13px;
+  color: #888;
+  cursor: pointer;
   margin-bottom: 20px;
+  display: inline-block;
 }
+.back-link:hover { color: #111; }
 
-.back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  background: #f5f5f5;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  color: #666;
-  font-size: 14px;
-  transition: all 0.2s;
-}
+.center-tip { text-align: center; padding: 80px; color: #aaa; }
 
-.back-btn:hover {
-  background: #eee;
-  color: #333;
-}
-
-.back-icon {
-  font-size: 16px;
-}
-
-.team-info-card {
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  margin-bottom: 24px;
-  overflow: hidden;
-}
-
-.card-header {
-  padding: 20px 24px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.team-name-wrapper {
+.detail-head {
   display: flex;
   align-items: center;
-  gap: 12px;
-}
-
-.team-name {
-  font-size: 24px;
-  font-weight: 600;
-  color: #fff;
-  margin: 0;
-}
-
-.team-status {
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
-  color: #fff;
-}
-
-.status-forming {
-  background: rgba(255, 255, 255, 0.25);
-}
-
-.status-full {
-  background: #4CAF50;
-}
-
-.status-submitted {
-  background: #FF9800;
-}
-
-.status-approved {
-  background: #2196F3;
-}
-
-.status-rejected {
-  background: #f44336;
-}
-
-.status-dismissed {
-  background: #9E9E9E;
-}
-
-.card-body {
-  padding: 24px;
-}
-
-.info-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-}
-
-.info-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.info-label {
-  font-size: 13px;
-  color: #999;
-}
-
-.info-value {
-  font-size: 14px;
-  color: #333;
-  font-weight: 500;
-}
-
-.members-section {
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  padding: 24px;
-  margin-bottom: 24px;
-}
-
-.section-header {
-  display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.section-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #333;
-  margin: 0;
-}
-
-.invite-btn {
-  padding: 8px 16px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: none;
-  border-radius: 6px;
-  color: #fff;
-  font-size: 14px;
-  cursor: pointer;
-  transition: transform 0.2s;
-}
-
-.invite-btn:hover {
-  transform: translateY(-1px);
-}
-
-.members-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.member-card {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px;
-  background: #f9f9f9;
-  border-radius: 8px;
-}
-
-.member-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.member-avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.member-detail {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.member-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: #333;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.leader-badge {
-  padding: 2px 8px;
-  background: #FF9800;
-  color: #fff;
-  font-size: 11px;
-  border-radius: 4px;
-}
-
-.member-meta {
-  font-size: 13px;
-  color: #666;
-}
-
-.member-joined {
-  font-size: 12px;
-  color: #999;
-}
-
-.member-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.action-btn {
-  padding: 6px 12px;
-  border: none;
-  border-radius: 4px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.remove-btn {
-  background: #fff;
-  color: #f44336;
-  border: 1px solid #f44336;
-}
-
-.remove-btn:hover {
-  background: #fff5f5;
-}
-
-.leave-btn {
-  background: #fff;
-  color: #999;
-  border: 1px solid #ddd;
-}
-
-.leave-btn:hover {
-  background: #f5f5f5;
-  color: #666;
-}
-
-.primary-btn {
-  background: #f44336;
-  color: #fff;
-}
-
-.primary-btn:hover {
-  background: #d32f2f;
-}
-
-.team-actions-section {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-}
-
-/* 弹窗样式 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: #fff;
-  border-radius: 12px;
-  width: 90%;
-  max-width: 500px;
-  max-height: 80vh;
-  overflow: hidden;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid #eee;
-}
-
-.modal-header h3 {
-  margin: 0;
-  font-size: 16px;
-  color: #333;
-}
-
-.close-btn {
-  width: 28px;
-  height: 28px;
-  border: none;
-  background: #f5f5f5;
-  border-radius: 50%;
-  font-size: 20px;
-  color: #666;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal-body {
-  padding: 20px;
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  padding: 16px 20px;
-  border-top: 1px solid #eee;
-}
-
-.btn-cancel {
-  padding: 8px 20px;
-  background: #f5f5f5;
-  border: none;
-  border-radius: 6px;
-  color: #666;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.btn-confirm {
-  padding: 8px 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: none;
-  border-radius: 6px;
-  color: #fff;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.btn-confirm:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.form-item {
   margin-bottom: 16px;
 }
 
-.form-label {
-  display: block;
-  margin-bottom: 6px;
-  font-size: 14px;
-  color: #333;
-  font-weight: 500;
-}
-
-.required {
-  color: #f44336;
-}
-
-.form-input {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 14px;
-  box-sizing: border-box;
-  transition: border-color 0.2s;
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: #667eea;
-}
-
-.error-message {
-  display: block;
-  margin-top: 4px;
-  font-size: 12px;
-  color: #f44336;
-}
-
-/* 搜索结果样式 */
-.search-results {
-  margin-top: 16px;
-  border: 1px solid #eee;
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.search-item {
+.head-left {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px;
-  cursor: pointer;
-  transition: background-color 0.2s;
 }
 
-.search-item:hover {
-  background-color: #f8f9ff;
+h2 { font-size: 20px; font-weight: 700; color: #111; margin: 0; }
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px 32px;
+  padding: 4px 0;
 }
 
-.search-item.selected {
-  background-color: #e8e4ff;
+.info-label { font-size: 12px; color: #999; margin-bottom: 4px; }
+.info-val { font-size: 14px; font-weight: 600; color: #111; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.sub { font-size: 12px; color: #aaa; font-weight: 400; }
+.none-text { font-size: 14px; color: #bbb; font-weight: 400; }
+
+.section { margin-top: 4px; }
+.section-title { font-size: 14px; font-weight: 700; color: #111; margin-bottom: 12px; }
+.member-table { width: 100%; border: 1px solid #e0e0e0; border-radius: 6px; }
+
+.search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+  max-height: 220px;
+  overflow-y: auto;
 }
 
-.search-item-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+.student-card {
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 16px;
-  font-weight: 600;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.12s;
+  user-select: none;
 }
+.student-card:hover { border-color: #aaa; background: #fafafa; }
+.student-card.selected { border-color: #111; background: #f4f4f4; }
 
-.search-item-info {
-  flex: 1;
-}
+.check-icon { font-weight: 700; color: #111; font-size: 16px; }
 
-.search-item-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: #333;
-}
+.no-result { text-align: center; padding: 16px; color: #aaa; font-size: 13px; }
 
-.search-item-meta {
-  font-size: 12px;
-  color: #999;
-}
+.s-name { font-size: 14px; font-weight: 600; color: #111; }
+.s-no { font-size: 12px; color: #aaa; margin-top: 2px; }
 
-.check-icon {
-  color: #667eea;
-  font-size: 18px;
-  font-weight: bold;
+.teacher-search { margin-bottom: 10px; }
+.tip { text-align: center; padding: 16px; color: #aaa; font-size: 13px; }
+.teacher-list-select { display: flex; flex-direction: column; gap: 8px; max-height: 260px; overflow-y: auto; }
+.teacher-opt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.12s;
+  user-select: none;
 }
-
-.search-loading {
-  text-align: center;
-  padding: 20px;
-  color: #999;
-}
-
-.search-empty {
-  text-align: center;
-  padding: 20px;
-  color: #999;
-}
+.teacher-opt:hover { border-color: #aaa; background: #fafafa; }
+.teacher-opt.selected { border-color: #111; background: #f4f4f4; }
+.t-name { font-size: 14px; font-weight: 600; color: #111; }
+.t-title { font-size: 12px; color: #888; font-weight: 400; margin-left: 6px; background: #f4f4f4; padding: 1px 6px; border-radius: 3px; }
+.t-dept { font-size: 12px; color: #aaa; margin-top: 3px; }
 </style>

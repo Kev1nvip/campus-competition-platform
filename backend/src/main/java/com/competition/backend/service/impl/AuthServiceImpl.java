@@ -48,17 +48,22 @@ public class AuthServiceImpl implements AuthService {
         }
 
         // 3. 构建用户实体并保存
+        // TEACHER 角色不存学号（null），避免空字符串触发唯一约束
+        String studentNo = "STUDENT".equals(registerDTO.getRole())
+                ? registerDTO.getStudentNo()
+                : null;
+
         SysUser user = SysUser.builder()
                 .username(registerDTO.getUsername())
-                .password(passwordEncoder.encode(registerDTO.getPassword())) // 密码加密
+                .password(passwordEncoder.encode(registerDTO.getPassword()))
                 .realName(registerDTO.getRealName())
                 .role(registerDTO.getRole())
-                .phone(registerDTO.getPhone())
-                .email(registerDTO.getEmail())
-                .studentNo(registerDTO.getStudentNo())
-                .department(registerDTO.getDepartment())
+                .phone(StringUtils.hasText(registerDTO.getPhone()) ? registerDTO.getPhone() : null)
+                .email(StringUtils.hasText(registerDTO.getEmail()) ? registerDTO.getEmail() : null)
+                .studentNo(studentNo)
+                .department(StringUtils.hasText(registerDTO.getDepartment()) ? registerDTO.getDepartment() : null)
                 .title(registerDTO.getTitle())
-                .status("ACTIVE") // 默认激活
+                .status("ACTIVE")
                 .build();
 
         userRepository.save(user);

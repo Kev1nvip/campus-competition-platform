@@ -3,11 +3,6 @@ import Layout from '@/components/admin-layout/Layout.vue'
 
 export const teacherRoutes: RouteRecordRaw[] = [
   {
-    path: '/teacher/login',
-    name: 'TeacherLogin',
-    component: () => import('@/views/teacher/Login.vue')
-  },
-  {
     path: '/teacher',
     component: Layout,
     redirect: '/teacher/competition',
@@ -31,6 +26,11 @@ export const teacherRoutes: RouteRecordRaw[] = [
         path: 'award',
         name: 'TeacherAward',
         component: () => import('@/views/teacher/AwardInput.vue')
+      },
+      {
+        path: 'profile',
+        name: 'TeacherProfile',
+        component: () => import('@/views/teacher/Profile.vue')
       }
     ]
   }

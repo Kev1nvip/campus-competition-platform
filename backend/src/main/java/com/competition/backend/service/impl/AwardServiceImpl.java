@@ -9,7 +9,9 @@ import com.competition.backend.entity.AwardRecord;
 import com.competition.backend.entity.SysUser;
 import com.competition.backend.repository.AwardAuditRepository;
 import com.competition.backend.repository.AwardRecordRepository;
+import com.competition.backend.repository.IndividualSignupRepository;
 import com.competition.backend.repository.SysUserRepository;
+import com.competition.backend.repository.TeamSignupRepository;
 import com.competition.backend.service.AwardService;
 import com.competition.backend.vo.AwardVO;
 import lombok.RequiredArgsConstructor;
@@ -25,13 +27,29 @@ public class AwardServiceImpl implements AwardService {
     private final AwardRecordRepository awardRecordRepository;
     private final AwardAuditRepository awardAuditRepository;
     private final SysUserRepository sysUserRepository;
+    private final IndividualSignupRepository individualSignupRepository;
+    private final TeamSignupRepository teamSignupRepository;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void createAward(Long userId, CreateAwardDTO dto) {
-        // 校验报名类型
         if (!"INDIVIDUAL".equals(dto.getBizType()) && !"TEAM".equals(dto.getBizType())) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "报名类型只能是 INDIVIDUAL 或 TEAM");
+        }
+
+        // P2-6: 校验关联报名是否已 APPROVED
+        if ("INDIVIDUAL".equals(dto.getBizType())) {
+            individualSignupRepository.findById(dto.getBizId()).ifPresent(signup -> {
+                if (!"APPROVED".equals(signup.getStatus())) {
+                    throw new BusinessException(ErrorCode.AWARD_SIGNUP_NOT_APPROVED, "报名未审核通过，不可提交获奖记录");
+                }
+            });
+        } else {
+            teamSignupRepository.findById(dto.getBizId()).ifPresent(signup -> {
+                if (!"APPROVED".equals(signup.getStatus())) {
+                    throw new BusinessException(ErrorCode.AWARD_SIGNUP_NOT_APPROVED, "报名未审核通过，不可提交获奖记录");
+                }
+            });
         }
 
         AwardRecord record = AwardRecord.builder()

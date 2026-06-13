@@ -20,8 +20,12 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -32,12 +36,14 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final ObjectMapper objectMapper;
 
-    /**
-     * 不需要认证的路径
-     */
     private static final String[] WHITE_LIST = {
             "/api/v1/auth/register",
             "/api/v1/auth/login",
+            // 竞赛浏览公开访问
+            "/api/v1/competitions",
+            "/api/v1/competitions/**",
+            // 教师列表（学生报名选老师用，无需登录）
+            "/api/v1/user/teachers",
             // Knife4j 文档
             "/doc.html",
             "/webjars/**",
@@ -46,25 +52,40 @@ public class SecurityConfig {
     };
 
     @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        // 允许开发环境前端域名和生产 Nginx 域名
+        config.setAllowedOrigins(List.of(
+                "http://localhost:5173",
+                "http://localhost:80",
+                "http://localhost"
+        ));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        config.setAllowedHeaders(List.of("*"));
+        config.setAllowCredentials(true);
+        config.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
+    }
+
+    @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // 关闭 csrf（前后端分离，使用JWT）
                 .csrf(AbstractHttpConfigurer::disable)
 
-                // 关闭 cors（后续单独配置）
-                .cors(AbstractHttpConfigurer::disable)
+                // 启用 CORS，使用上方定义的 corsConfigurationSource Bean
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-                // 无状态 Session
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                // 路径权限配置
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(WHITE_LIST).permitAll()
                         .anyRequest().authenticated()
                 )
 
-                // 未登录处理
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint((request, response, authException) -> {
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -76,7 +97,6 @@ public class SecurityConfig {
                             );
                             response.getWriter().write(objectMapper.writeValueAsString(result));
                         })
-                        // 无权限处理
                         .accessDeniedHandler((request, response, accessDeniedException) -> {
                             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
@@ -89,7 +109,6 @@ public class SecurityConfig {
                         })
                 )
 
-                // JWT 过滤器放在 UsernamePasswordAuthenticationFilter 之前
                 .addFilterBefore(jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class);
 

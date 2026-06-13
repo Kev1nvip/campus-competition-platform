@@ -1,24 +1,28 @@
-import axios from 'axios'
-const service = axios.create({
-  baseURL: '/api',
-  timeout: 6000
-})
+import request from '@/utils/request'
 
-// 管理员登录
-export const adminLogin = (data: { account: string; pwd: string }) => {
-  return service.post('/admin/login', data)
-}
+export const adminLogin = (data: { username: string; password: string }) =>
+  request({ url: '/v1/auth/login', method: 'POST', data })
 
-// 用户管理-列表
-export const getUserList = () => service.get('/admin/user/list')
-// 新增用户
-export const addUser = (data: any) => service.post('/admin/user/add', data)
+// 用户管理 — 实际后端路由: GET /api/v1/user/list
+export const getUserList = (params?: { page?: number; size?: number; keyword?: string }) =>
+  request({ url: '/v1/user/list', method: 'GET', params })
 
-// 竞赛管理列表
-export const getCompAllList = () => service.get('/admin/comp/list')
+// 新增用户 — 通过注册接口
+export const addUser = (data: any) =>
+  request({ url: '/v1/auth/register', method: 'POST', data })
 
-// 院系、专业接口
-export const getDeptList = () => service.get('/admin/dept/list')
+// 禁用/启用用户
+export const toggleUserStatus = (id: number, status: 'ACTIVE' | 'DISABLED') =>
+  request({ url: `/v1/user/${id}/status`, method: 'PUT', params: { status } })
 
-// 统计数据
-export const getStatData = () => service.get('/admin/stat')
+// 竞赛管理 — 实际后端路由: GET /api/v1/competitions
+export const getCompAllList = (params?: { page?: number; size?: number }) =>
+  request({ url: '/v1/competitions', method: 'GET', params: { page: 1, size: 100, ...params } })
+
+// 院系管理 — 后端暂无，返回空
+export const getDeptList = () =>
+  Promise.resolve({ code: 0, message: 'success', data: [] })
+
+// 数据统计 — 实际后端路由: GET /api/v1/statistics/dashboard
+export const getStatData = () =>
+  request({ url: '/v1/statistics/dashboard', method: 'GET' })
