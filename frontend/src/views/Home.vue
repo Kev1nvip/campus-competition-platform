@@ -1,50 +1,44 @@
 <template>
-  <div class="home-wrap">
-    <!-- 顶部导航 -->
+  <div class="landing">
+    <!-- 顶栏 -->
     <header class="nav">
       <div class="nav-brand">◆ 校园竞赛平台</div>
-      <nav class="nav-links">
-        <span class="nav-item" @click="router.push('/competitions')">竞赛列表</span>
-        <span class="nav-item" @click="router.push('/teams')">队伍</span>
-        <span class="nav-item" @click="router.push('/ai-recommend')">AI 推荐</span>
-        <el-button size="small" @click="router.push('/login')" style="margin-left:8px;">登录</el-button>
+      <nav class="nav-right">
+        <el-button size="small" @click="router.push('/login')">登录</el-button>
         <el-button size="small" type="primary" @click="router.push('/register')">注册</el-button>
       </nav>
     </header>
 
     <!-- Hero -->
     <section class="hero">
-      <div class="hero-content">
-        <h1>校园学术竞赛管理平台</h1>
-        <p class="hero-sub">浏览竞赛、组建团队、智能推荐，一站式竞赛管理体验</p>
+      <div class="hero-inner">
+        <h1>校园学术竞赛<br />管理平台</h1>
+        <p class="hero-desc">
+          为学生、教师、管理员提供一站式竞赛报名、队伍组建、获奖管理服务
+        </p>
         <div class="hero-actions">
-          <el-button type="primary" size="large" @click="router.push('/competitions')">浏览竞赛</el-button>
-          <el-button size="large" @click="router.push('/register')">立即注册</el-button>
+          <el-button type="primary" size="large" @click="router.push('/login')">立即登录</el-button>
+          <el-button size="large" @click="router.push('/register')">注册账号</el-button>
         </div>
       </div>
     </section>
 
-    <!-- 功能入口 -->
-    <section class="features">
-      <div class="feature-card" @click="router.push('/competitions')">
-        <div class="feat-icon">▤</div>
-        <h3>竞赛列表</h3>
-        <p>浏览全部校园学术竞赛，按状态和类型筛选</p>
+    <!-- 三端说明 -->
+    <section class="roles">
+      <div class="role-card">
+        <div class="role-icon">▣</div>
+        <div class="role-title">学生</div>
+        <div class="role-desc">浏览竞赛、报名参赛、组建队伍、查看个人获奖记录</div>
       </div>
-      <div class="feature-card" @click="router.push('/teams')">
-        <div class="feat-icon">◈</div>
-        <h3>队伍管理</h3>
-        <p>创建或加入队伍，协作参赛</p>
+      <div class="role-card">
+        <div class="role-icon">▦</div>
+        <div class="role-title">教师</div>
+        <div class="role-desc">发布竞赛、审核报名、管理指导队伍、录入获奖信息</div>
       </div>
-      <div class="feature-card" @click="router.push('/ai-recommend')">
-        <div class="feat-icon">◉</div>
-        <h3>AI 智能推荐</h3>
-        <p>根据你的方向智能匹配合适竞赛</p>
-      </div>
-      <div class="feature-card" @click="router.push('/profile')">
-        <div class="feat-icon">◎</div>
-        <h3>个人中心</h3>
-        <p>查看报名记录、获奖情况</p>
+      <div class="role-card">
+        <div class="role-icon">▧</div>
+        <div class="role-title">管理员</div>
+        <div class="role-desc">管理平台用户、统一审核竞赛、查看全平台数据统计</div>
       </div>
     </section>
 
@@ -53,16 +47,37 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useTeacherStore } from '@/store/userTeacher'
+import { useAdminStore } from '@/store/userAdmin'
+
 const router = useRouter()
+const teacherStore = useTeacherStore()
+const adminStore = useAdminStore()
+
+// 已登录用户直接跳到对应工作台
+onMounted(() => {
+  const userInfo = localStorage.getItem('userInfo')
+  if (!userInfo) return
+
+  const info = JSON.parse(userInfo)
+  if (info.role === 'ADMIN' && adminStore.id) {
+    router.replace('/admin/user')
+  } else if (info.role === 'TEACHER' && teacherStore.id) {
+    router.replace('/teacher/competition')
+  } else if (info.role === 'STUDENT') {
+    router.replace('/student/dashboard')
+  }
+})
 </script>
 
 <style scoped>
-.home-wrap {
+.landing {
   min-height: 100vh;
+  background: #fff;
   display: flex;
   flex-direction: column;
-  background: #fff;
 }
 
 .nav {
@@ -81,49 +96,39 @@ const router = useRouter()
   color: #111;
 }
 
-.nav-links {
+.nav-right {
   display: flex;
-  align-items: center;
-  gap: 4px;
+  gap: 8px;
 }
-
-.nav-item {
-  padding: 6px 12px;
-  font-size: 13px;
-  color: #555;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: background 0.15s;
-}
-.nav-item:hover { background: #f4f4f4; color: #111; }
 
 .hero {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 80px 40px 60px;
+  padding: 80px 40px;
   border-bottom: 1px solid #e0e0e0;
 }
 
-.hero-content {
+.hero-inner {
   text-align: center;
-  max-width: 560px;
+  max-width: 600px;
 }
 
 h1 {
-  font-size: 36px;
-  font-weight: 800;
+  font-size: 44px;
+  font-weight: 900;
   color: #111;
   line-height: 1.2;
-  margin-bottom: 16px;
+  margin: 0 0 20px;
+  letter-spacing: -0.5px;
 }
 
-.hero-sub {
-  font-size: 15px;
+.hero-desc {
+  font-size: 16px;
   color: #666;
-  margin-bottom: 32px;
-  line-height: 1.7;
+  line-height: 1.8;
+  margin: 0 0 36px;
 }
 
 .hero-actions {
@@ -132,41 +137,38 @@ h1 {
   justify-content: center;
 }
 
-.features {
+.roles {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  border-bottom: 1px solid #e0e0e0;
+  grid-template-columns: repeat(3, 1fr);
 }
 
-.feature-card {
-  padding: 36px 28px;
+.role-card {
+  padding: 48px 40px;
   border-right: 1px solid #e0e0e0;
-  cursor: pointer;
-  transition: background 0.15s;
 }
-.feature-card:last-child { border-right: none; }
-.feature-card:hover { background: #fafafa; }
+.role-card:last-child { border-right: none; }
 
-.feat-icon {
-  font-size: 24px;
+.role-icon {
+  font-size: 20px;
   color: #333;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
-.feature-card h3 {
-  font-size: 15px;
+.role-title {
+  font-size: 16px;
   font-weight: 700;
   color: #111;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
-.feature-card p {
+.role-desc {
   font-size: 13px;
   color: #888;
-  line-height: 1.6;
+  line-height: 1.7;
 }
 
 .foot {
+  border-top: 1px solid #e0e0e0;
   padding: 20px 40px;
   text-align: center;
   font-size: 12px;

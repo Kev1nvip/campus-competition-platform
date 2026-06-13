@@ -1,11 +1,6 @@
 <template>
-  <div class="page-wrap">
-    <header class="nav">
-      <span class="nav-brand" @click="router.push('/')">◆ 校园竞赛平台</span>
-      <div class="nav-right">
-        <span class="nav-item" @click="router.push('/competitions')">← 竞赛列表</span>
-      </div>
-    </header>
+  <div>
+    <div class="back-link" @click="router.push('/student/competitions')">← 返回竞赛列表</div>
 
     <div v-if="isLoading" class="center-tip">加载中...</div>
     <div v-else-if="!detail" class="center-tip">竞赛不存在或已下架</div>
@@ -71,7 +66,7 @@
           v-if="detail.status === 'SIGNING'"
           type="primary"
           size="large"
-          @click="router.push(`/competition/${detail.id}/signup`)"
+          @click="router.push(`/student/competition/${detail.id}/signup`)"
         >
           立即报名
         </el-button>
@@ -116,28 +111,16 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page-wrap { min-height: 100vh; background: #fff; }
-
-.nav {
-  height: 56px;
-  border-bottom: 1px solid #e0e0e0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 40px;
-  position: sticky;
-  top: 0;
-  background: #fff;
-  z-index: 10;
+.back-link {
+  font-size: 13px;
+  color: #888;
+  cursor: pointer;
+  margin-bottom: 20px;
+  display: inline-block;
 }
-.nav-brand { font-size: 14px; font-weight: 800; letter-spacing: 1px; color: #111; cursor: pointer; }
-.nav-right { display: flex; gap: 4px; }
-.nav-item { padding: 6px 12px; font-size: 13px; color: #555; cursor: pointer; border-radius: 4px; }
-.nav-item:hover { background: #f4f4f4; color: #111; }
+.back-link:hover { color: #111; }
 
 .center-tip { text-align: center; padding: 80px; color: #aaa; }
-
-.page-inner { max-width: 760px; margin: 0 auto; padding: 32px 20px 60px; }
 
 .detail-head { margin-bottom: 20px; }
 .tags { display: flex; gap: 8px; margin-bottom: 12px; }

@@ -99,13 +99,17 @@ const titleMap: Record<string, string> = {
 const currentTitle = computed(() => titleMap[route.path] ?? '后台管理')
 
 const logout = () => {
+  // 清除 localStorage（token + userInfo）
+  localStorage.removeItem('token')
+  localStorage.removeItem('userInfo')
+  // 清除对应 store
   if (role.value === 'teacher') {
     teacherStore.clear()
-    router.push('/teacher/login')
   } else {
     adminStore.clear()
-    router.push('/admin/login')
   }
+  // 统一跳转到登录页
+  router.push('/login')
 }
 </script>
 

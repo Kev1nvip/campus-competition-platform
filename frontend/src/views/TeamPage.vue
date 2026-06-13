@@ -1,13 +1,5 @@
 <template>
-  <div class="page-wrap">
-    <header class="nav">
-      <span class="nav-brand" @click="router.push('/')">◆ 校园竞赛平台</span>
-      <div class="nav-right">
-        <span class="nav-item" @click="router.push('/competitions')">竞赛</span>
-        <span class="nav-item" @click="router.push('/profile')">我的</span>
-      </div>
-    </header>
-
+  <div>
     <div class="page-inner">
       <div class="page-header">
         <h2>队伍广场</h2>
@@ -21,7 +13,7 @@
           v-for="t in teams"
           :key="t.id"
           class="team-row"
-          @click="router.push(`/team/${t.id}`)"
+          @click="router.push(`/student/team/${t.id}`)"
         >
           <div class="team-row-left">
             <span class="team-name">{{ t.teamName }}</span>
@@ -103,13 +95,7 @@ onMounted(fetchTeams)
 </script>
 
 <style scoped>
-.page-wrap { min-height: 100vh; background: #fff; }
-.nav { height: 56px; border-bottom: 1px solid #e0e0e0; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; position: sticky; top: 0; background: #fff; z-index: 10; }
-.nav-brand { font-size: 14px; font-weight: 800; letter-spacing: 1px; color: #111; cursor: pointer; }
-.nav-right { display: flex; gap: 4px; }
-.nav-item { padding: 6px 12px; font-size: 13px; color: #555; cursor: pointer; border-radius: 4px; }
-.nav-item:hover { background: #f4f4f4; color: #111; }
-.page-inner { max-width: 800px; margin: 0 auto; padding: 28px 20px; }
+.page-inner { max-width: 800px; }
 .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
 h2 { font-size: 18px; font-weight: 700; color: #111; margin: 0; }
 .center-tip { text-align: center; padding: 60px; color: #aaa; font-size: 14px; }

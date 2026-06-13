@@ -1,9 +1,6 @@
 <template>
-  <div class="page-wrap">
-    <header class="nav">
-      <span class="nav-brand" @click="router.push('/')">◆ 校园竞赛平台</span>
-      <span class="nav-item" @click="router.push(`/competition/${route.params.id}`)">← 返回竞赛详情</span>
-    </header>
+  <div>
+    <div class="back-link" @click="router.push(`/student/competition/${route.params.id}`)">← 返回竞赛详情</div>
 
     <div class="page-inner">
       <h2>个人赛报名</h2>
@@ -94,7 +91,7 @@ const handleSubmit = async () => {
     })
     if (res.code === 0) {
       ElMessage.success('报名成功，等待审核')
-      router.push(`/competition/${route.params.id}`)
+      router.push(`/student/competition/${route.params.id}`)
     } else {
       errorMsg.value = res.message || '报名失败'
     }
@@ -109,12 +106,9 @@ onMounted(fetchTeachers)
 </script>
 
 <style scoped>
-.page-wrap { min-height: 100vh; background: #fff; }
-.nav { height: 56px; border-bottom: 1px solid #e0e0e0; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; }
-.nav-brand { font-size: 14px; font-weight: 800; letter-spacing: 1px; color: #111; cursor: pointer; }
-.nav-item { font-size: 13px; color: #555; cursor: pointer; padding: 6px 12px; border-radius: 4px; }
-.nav-item:hover { background: #f4f4f4; color: #111; }
-.page-inner { max-width: 640px; margin: 0 auto; padding: 32px 20px; }
+.back-link { font-size: 13px; color: #888; cursor: pointer; margin-bottom: 20px; display: inline-block; }
+.back-link:hover { color: #111; }
+.page-inner { max-width: 640px; }
 h2 { font-size: 20px; font-weight: 700; color: #111; margin-bottom: 24px; }
 .signup-form { background: #fff; }
 .teacher-search { margin-bottom: 10px; }

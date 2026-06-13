@@ -3,11 +3,6 @@ import Layout from '@/components/admin-layout/Layout.vue'
 
 export const adminRoutes: RouteRecordRaw[] = [
   {
-    path: '/admin/login',
-    name: 'AdminLogin',
-    component: () => import('@/views/admin/Login.vue')
-  },
-  {
     path: '/admin',
     component: Layout,
     redirect: '/admin/user',

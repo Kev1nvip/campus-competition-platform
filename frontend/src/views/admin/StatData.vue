@@ -83,7 +83,13 @@ const loadData = async () => {
   isLoading.value = true
   try {
     const res: any = await getStatData()
-    if (res.code === 0) stats.value = res.data
+    if (res.code === 0) {
+      stats.value = res.data
+    } else {
+      ElMessage.error(res.message || '加载失败')
+    }
+  } catch (e: any) {
+    ElMessage.error(e.response?.data?.message || '请求失败，请检查后端服务')
   } finally {
     isLoading.value = false
   }

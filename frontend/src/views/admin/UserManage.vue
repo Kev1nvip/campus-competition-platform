@@ -6,13 +6,13 @@
     </div>
 
     <div class="toolbar">
-      <el-input v-model="keyword" placeholder="姓名 / 账号搜索" clearable size="small" style="width:220px;" @keyup.enter="loadData" />
+      <el-input v-model="keyword" placeholder="姓名 / 账号搜索" clearable size="small" style="width:220px;" @keyup.enter="loadData" @clear="loadData" />
       <el-button size="small" @click="loadData">搜索</el-button>
     </div>
 
     <div v-if="isLoading" class="center-tip">加载中...</div>
     <div v-else-if="list.length === 0" class="center-tip">暂无用户</div>
-    <el-table v-else :data="filteredList" class="data-table">
+    <el-table v-else :data="list" class="data-table">
       <el-table-column label="ID" prop="id" width="70" />
       <el-table-column label="账号" prop="username" />
       <el-table-column label="姓名" prop="realName" />
@@ -58,7 +58,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { getUserList, addUser } from '@/api/admin'
 
 const list = ref<any[]>([])
@@ -67,17 +67,17 @@ const keyword = ref('')
 const showAdd = ref(false)
 const addForm = reactive({ username: '', password: '', realName: '', role: 'STUDENT' })
 
-const filteredList = computed(() =>
-  keyword.value
-    ? list.value.filter((u: any) => u.username?.includes(keyword.value) || u.realName?.includes(keyword.value))
-    : list.value
-)
-
 const loadData = async () => {
   isLoading.value = true
   try {
-    const res: any = await getUserList()
-    if (res.code === 0) list.value = res.data ?? []
+    const res: any = await getUserList({ keyword: keyword.value || undefined })
+    if (res.code === 0) {
+      list.value = res.data?.list ?? res.data ?? []
+    } else {
+      ElMessage.error(res.message || '加载失败')
+    }
+  } catch (e: any) {
+    ElMessage.error(e.response?.data?.message || '请求失败，请检查后端服务')
   } finally {
     isLoading.value = false
   }

@@ -2,6 +2,7 @@ package com.competition.backend.service.impl;
 
 import com.competition.backend.common.constant.ErrorCode;
 import com.competition.backend.common.exception.BusinessException;
+import com.competition.backend.common.result.PageVO;
 import com.competition.backend.dto.UserUpdateDTO;
 import com.competition.backend.entity.SysUser;
 import com.competition.backend.repository.SysUserRepository;
@@ -9,6 +10,10 @@ import com.competition.backend.service.UserService;
 import com.competition.backend.vo.TeacherProfileVO;
 import com.competition.backend.vo.UserInfoVO;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -110,6 +115,38 @@ public class UserServiceImpl implements UserService {
         vo.setEmail(user.getEmail());
         vo.setAvatarUrl(user.getAvatarUrl());
 
+        return vo;
+    }
+
+    @Override
+    public PageVO<UserInfoVO> listUsers(int page, int size, String keyword) {
+        Specification<SysUser> spec = (root, query, cb) -> {
+            if (!StringUtils.hasText(keyword)) return cb.conjunction();
+            String like = "%" + keyword + "%";
+            return cb.or(
+                    cb.like(root.get("username"), like),
+                    cb.like(root.get("realName"), like)
+            );
+        };
+        Page<SysUser> pageResult = userRepository.findAll(
+                spec, PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        return PageVO.of(pageResult, this::toVO);
+    }
+
+    private UserInfoVO toVO(SysUser user) {
+        UserInfoVO vo = new UserInfoVO();
+        vo.setId(user.getId());
+        vo.setUsername(user.getUsername());
+        vo.setRealName(user.getRealName());
+        vo.setRole(user.getRole());
+        vo.setPhone(user.getPhone());
+        vo.setEmail(user.getEmail());
+        vo.setStudentNo(user.getStudentNo());
+        vo.setDepartment(user.getDepartment());
+        vo.setTitle(user.getTitle());
+        vo.setAvatarUrl(user.getAvatarUrl());
+        vo.setStatus(user.getStatus());
+        vo.setCreatedAt(user.getCreatedAt());
         return vo;
     }
 }

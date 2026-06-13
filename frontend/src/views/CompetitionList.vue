@@ -1,24 +1,28 @@
 <template>
-  <div class="page-wrap">
-    <!-- 顶部导航 -->
-    <header class="nav">
-      <span class="nav-brand" @click="router.push('/')">◆ 校园竞赛平台</span>
-      <div class="nav-right">
-        <span class="nav-item" @click="router.push('/competitions')">竞赛</span>
-        <span class="nav-item" @click="router.push('/teams')">队伍</span>
-        <span class="nav-item" @click="router.push('/ai-recommend')">AI 推荐</span>
-        <span class="nav-item" @click="router.push('/profile')">我的</span>
-      </div>
-    </header>
-
-    <div class="page-inner">
-      <!-- 筛选栏 -->
+  <div>
+    <!-- 筛选栏 -->
       <div class="filter-bar">
-        <el-select v-model="filters.type" placeholder="竞赛类型" clearable size="small" style="width:120px;">
+        <el-select
+          v-model="filters.type"
+          placeholder="竞赛类型"
+          clearable
+          size="small"
+          style="width:120px;"
+          @change="handleFilterChange"
+          @clear="handleFilterChange"
+        >
           <el-option label="个人赛" value="INDIVIDUAL" />
           <el-option label="团队赛" value="TEAM" />
         </el-select>
-        <el-select v-model="filters.status" placeholder="竞赛状态" clearable size="small" style="width:120px;">
+        <el-select
+          v-model="filters.status"
+          placeholder="竞赛状态"
+          clearable
+          size="small"
+          style="width:120px;"
+          @change="handleFilterChange"
+          @clear="handleFilterChange"
+        >
           <el-option label="未开始" value="UPCOMING" />
           <el-option label="报名中" value="SIGNING" />
           <el-option label="报名截止" value="CLOSED" />
@@ -31,9 +35,10 @@
           clearable
           size="small"
           style="width:220px;"
-          @keyup.enter="fetchList"
+          @keyup.enter="handleFilterChange"
+          @clear="handleFilterChange"
         />
-        <el-button size="small" type="primary" @click="fetchList">搜索</el-button>
+        <el-button size="small" type="primary" @click="handleFilterChange">搜索</el-button>
         <el-button size="small" @click="handleReset">重置</el-button>
       </div>
 
@@ -45,7 +50,7 @@
           v-for="item in list"
           :key="item.id"
           class="comp-row"
-          @click="router.push(`/competition/${item.id}`)"
+          @click="router.push(`/student/competition/${item.id}`)"
         >
           <div class="comp-row-left">
             <el-tag :type="item.type === 'INDIVIDUAL' ? '' : 'info'" size="small" effect="plain">
@@ -74,7 +79,6 @@
         class="pagination"
         @current-change="fetchList"
       />
-    </div>
   </div>
 </template>
 
@@ -84,7 +88,6 @@ import { useRouter } from 'vue-router'
 import { competitionApi } from '@/api/competition'
 import type { CompetitionVO } from '@/types/competition'
 import { statusMap, typeMap } from '@/types/competition'
-
 
 const router = useRouter()
 const list = ref<CompetitionVO[]>([])
@@ -115,6 +118,12 @@ const fetchList = async () => {
   }
 }
 
+// 筛选条件变化时重置页码并重新请求
+const handleFilterChange = () => {
+  pagination.page = 1
+  fetchList()
+}
+
 const handleReset = () => {
   filters.status = ''
   filters.type = ''
@@ -127,33 +136,9 @@ onMounted(fetchList)
 </script>
 
 <style scoped>
-.page-wrap { min-height: 100vh; background: #fff; display: flex; flex-direction: column; }
-
-.nav {
-  height: 56px;
-  border-bottom: 1px solid #e0e0e0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 40px;
-  position: sticky;
-  top: 0;
-  background: #fff;
-  z-index: 10;
-}
-.nav-brand { font-size: 14px; font-weight: 800; letter-spacing: 1px; color: #111; cursor: pointer; }
-.nav-right { display: flex; gap: 4px; }
-.nav-item { padding: 6px 12px; font-size: 13px; color: #555; cursor: pointer; border-radius: 4px; }
-.nav-item:hover { background: #f4f4f4; color: #111; }
-
-.page-inner { max-width: 900px; margin: 0 auto; padding: 24px 20px; width: 100%; }
-
 .filter-bar { display: flex; gap: 8px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
-
 .center-tip { text-align: center; padding: 60px; color: #aaa; font-size: 14px; }
-
 .comp-list { border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden; }
-
 .comp-row {
   display: flex;
   align-items: center;
@@ -166,14 +151,11 @@ onMounted(fetchList)
 }
 .comp-row:last-child { border-bottom: none; }
 .comp-row:hover { background: #fafafa; }
-
 .comp-row-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
 .comp-title { font-size: 14px; font-weight: 600; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .comp-org { font-size: 12px; color: #aaa; white-space: nowrap; }
-
 .comp-row-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
 .comp-date { font-size: 12px; color: #999; white-space: nowrap; }
 .arrow { color: #ccc; font-size: 14px; }
-
 .pagination { margin-top: 20px; justify-content: center; }
 </style>

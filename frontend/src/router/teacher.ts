@@ -3,11 +3,6 @@ import Layout from '@/components/admin-layout/Layout.vue'
 
 export const teacherRoutes: RouteRecordRaw[] = [
   {
-    path: '/teacher/login',
-    name: 'TeacherLogin',
-    component: () => import('@/views/teacher/Login.vue')
-  },
-  {
     path: '/teacher',
     component: Layout,
     redirect: '/teacher/competition',

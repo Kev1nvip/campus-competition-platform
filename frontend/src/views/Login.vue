@@ -1,34 +1,57 @@
 <template>
   <div class="auth-page">
-    <div class="auth-card">
-      <div class="auth-header">
-        <div class="brand">◆ 校园竞赛平台</div>
-        <h2>登录</h2>
+    <div class="auth-split">
+      <!-- 左侧品牌区 -->
+      <div class="auth-brand">
+        <div class="brand-logo">◆</div>
+        <div class="brand-name">校园竞赛平台</div>
+        <div class="brand-desc">一站式校园学术竞赛管理系统</div>
       </div>
 
-      <el-form :model="form" @submit.prevent="handleLogin" class="auth-form">
-        <el-form-item>
-          <el-input v-model="form.username" placeholder="用户名" size="large" clearable />
-        </el-form-item>
-        <el-form-item>
-          <el-input v-model="form.password" type="password" placeholder="密码" size="large" show-password />
-        </el-form-item>
+      <!-- 右侧表单区 -->
+      <div class="auth-form-area">
+        <div class="auth-card">
+          <h2>登录</h2>
+          <p class="auth-sub">学生、教师、管理员统一登录</p>
 
-        <div v-if="errorMessage" class="error-tip">{{ errorMessage }}</div>
+          <el-form :model="form" class="form">
+            <el-form-item>
+              <el-input
+                v-model="form.username"
+                placeholder="用户名"
+                size="large"
+                clearable
+                @keyup.enter="handleLogin"
+              />
+            </el-form-item>
+            <el-form-item>
+              <el-input
+                v-model="form.password"
+                type="password"
+                placeholder="密码"
+                size="large"
+                show-password
+                @keyup.enter="handleLogin"
+              />
+            </el-form-item>
 
-        <el-button
-          type="primary"
-          size="large"
-          :loading="loading"
-          style="width:100%;margin-top:8px;"
-          @click="handleLogin"
-        >
-          {{ loading ? '登录中...' : '登 录' }}
-        </el-button>
-      </el-form>
+            <div v-if="errorMessage" class="error-tip">{{ errorMessage }}</div>
 
-      <div class="auth-footer">
-        没有账号？<span class="link" @click="router.push('/register')">立即注册</span>
+            <el-button
+              type="primary"
+              size="large"
+              :loading="loading"
+              style="width:100%;margin-top:12px;"
+              @click="handleLogin"
+            >
+              {{ loading ? '登录中...' : '登 录' }}
+            </el-button>
+          </el-form>
+
+          <div class="auth-footer">
+            还没有账号？<span class="link" @click="router.push('/register')">立即注册</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -38,8 +61,13 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { login } from '@/api/auth'
+import { useTeacherStore } from '@/store/userTeacher'
+import { useAdminStore } from '@/store/userAdmin'
 
 const router = useRouter()
+const teacherStore = useTeacherStore()
+const adminStore = useAdminStore()
+
 const form = reactive({ username: '', password: '' })
 const loading = ref(false)
 const errorMessage = ref('')
@@ -54,14 +82,30 @@ const handleLogin = async () => {
   try {
     const res: any = await login(form)
     if (res.code === 0) {
-      localStorage.setItem('token', res.data.token)
-      localStorage.setItem('userInfo', JSON.stringify(res.data.userInfo))
-      router.push('/')
+      const { userInfo, token } = res.data
+      localStorage.setItem('token', token)
+      localStorage.setItem('userInfo', JSON.stringify(userInfo))
+
+      // 根据角色分流
+      if (userInfo.role === 'TEACHER') {
+        teacherStore.setUser({
+          id: String(userInfo.userId),
+          name: userInfo.realName,
+          tid: userInfo.username
+        })
+        router.push('/teacher/competition')
+      } else if (userInfo.role === 'ADMIN') {
+        adminStore.setUser({ id: String(userInfo.userId), name: userInfo.realName })
+        router.push('/admin/user')
+      } else {
+        // STUDENT
+        router.push('/student/dashboard')
+      }
     } else {
-      errorMessage.value = res.message || '登录失败'
+      errorMessage.value = res.message || '用户名或密码错误'
     }
-  } catch (e: any) {
-    errorMessage.value = e.response?.data?.message || '网络错误，请稍后重试'
+  } catch {
+    errorMessage.value = '网络错误，请稍后重试'
   } finally {
     loading.value = false
   }
@@ -71,40 +115,78 @@ const handleLogin = async () => {
 <style scoped>
 .auth-page {
   min-height: 100vh;
-  background: #fafafa;
+  background: #fff;
+  display: flex;
+}
+
+.auth-split {
+  display: flex;
+  width: 100%;
+}
+
+/* 左侧品牌 */
+.auth-brand {
+  width: 380px;
+  flex-shrink: 0;
+  background: #111;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 60px 48px;
+  color: #fff;
+}
+
+.brand-logo {
+  font-size: 28px;
+  margin-bottom: 20px;
+  color: #fff;
+}
+
+.brand-name {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  margin-bottom: 12px;
+}
+
+.brand-desc {
+  font-size: 14px;
+  color: #888;
+  line-height: 1.7;
+}
+
+/* 右侧表单 */
+.auth-form-area {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: #fafafa;
+  padding: 40px 20px;
 }
 
 .auth-card {
-  width: 380px;
+  width: 360px;
   background: #fff;
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   padding: 40px;
 }
 
-.auth-header {
-  margin-bottom: 28px;
-}
-
-.brand {
-  font-size: 13px;
-  font-weight: 700;
-  color: #555;
-  letter-spacing: 1px;
-  margin-bottom: 16px;
-}
-
 h2 {
   font-size: 22px;
   font-weight: 700;
   color: #111;
-  margin: 0;
+  margin: 0 0 6px;
 }
 
-.auth-form {
+.auth-sub {
+  font-size: 13px;
+  color: #aaa;
+  margin: 0 0 28px;
+}
+
+.form {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -132,5 +214,9 @@ h2 {
   font-weight: 600;
   cursor: pointer;
   text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .auth-brand { display: none; }
 }
 </style>

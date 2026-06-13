@@ -5,7 +5,6 @@
  */
 import axios from 'axios'
 import type { InternalAxiosRequestConfig, AxiosRequestConfig, AxiosResponse } from 'axios'
-import router from '@/router'
 
 const instance = axios.create({
   baseURL: '/api',
@@ -27,12 +26,15 @@ instance.interceptors.request.use(
 )
 
 // 响应拦截器 unwrap data，401 时清除登录状态并跳转登录页
+// 用懒加载 router 避免循环依赖
 instance.interceptors.response.use(
   (response: AxiosResponse) => response.data,
-  (error: any) => {
+  async (error: any) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token')
       localStorage.removeItem('userInfo')
+      // 懒加载 router，避免模块初始化时的循环依赖
+      const { default: router } = await import('@/router')
       router.push('/login')
     }
     return Promise.reject(error)
