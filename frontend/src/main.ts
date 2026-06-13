@@ -3,10 +3,13 @@ import './style.css'
 import App from './App.vue'
 import router from './router'
 import pinia from './store'
+// 新增持久化插件
+import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 
 const app = createApp(App)
+// 注册持久化
+pinia.use(piniaPluginPersistedstate)
 
-// 注册路由和状态管理
 app.use(router)
 app.use(pinia)
 
