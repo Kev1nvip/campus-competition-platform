@@ -107,6 +107,10 @@ services:
       DB_NAME: ${DB_NAME:-campus_competition}
       DB_USERNAME: ${DB_USERNAME:-competition}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-competition123}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-campus_competition}
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME:-competition}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-competition123}
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
       # Redis
       REDIS_HOST: redis
       REDIS_PORT: 6379
