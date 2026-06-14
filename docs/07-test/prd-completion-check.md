@@ -1,256 +1,199 @@
-# PRD 功能需求完成度审查报告
+# PRD 功能需求完成度审查报告（更新版）
 
-**审查日期：** 2026-06-13  
+**审查日期：** 2026-06-14  
 **对照文档：** docs/01-requirements/PRD.md v1.0  
-**审查结论：** 核心骨架已实现，存在 **7 个未实现模块** 和 **多个接口缺失**，影响演示完整性
+**上次审查：** 2026-06-13  
+**审查结论：** 相比上次审查，主要功能模块已大幅完善。仍存在 **3 个未修复的后端 Bug** 和 **1 个前端功能缺口**。
 
 ---
 
-## 一、总体完成度概览
+## 一、总体完成度（与上次对比）
 
-| 模块 | PRD要求 | 实现状态 |
+| 模块 | 上次状态 | 本次状态 |
 |------|---------|---------|
-| 3.1 用户模块（注册/登录/个人主页） | ✅ | ⚠️ 基本完成，个人主页偏弱 |
-| 3.2 竞赛模块（发布/列表/详情） | ✅ | ⚠️ 状态自动流转未实现 |
-| 3.3 报名模块（个人赛/团队赛全流程） | ✅ | ⚠️ 团队赛路径 B 部分缺失 |
-| 3.4 招募帖模块 | ✅ | ❌ 学生组队招募帖未实现 |
-| 3.5 审核模块 | ✅ | ⚠️ 接口权限控制缺失 |
-| 3.6 获奖记录模块 | ✅ | ❌ 文件上传接口缺失 |
-| 3.7 消息通知模块 | ✅（PRD要求） | ❌ 完全未实现 |
-| 3.8 数据统计模块 | ✅ | ⚠️ 指标不完整 |
-| 3.9 AI推荐模块 | ✅ | ✅ 已实现 |
+| 3.1 用户模块 | ⚠️ 偏弱 | ✅ 基本完成 |
+| 3.2 竞赛模块 | ⚠️ 状态不流转 | ✅ 定时任务已实现 |
+| 3.3 报名模块（个人赛） | ⚠️ 老师列表 404 | ✅ 流程已打通 |
+| 3.3 报名模块（团队赛） | ⚠️ 路径 B 残缺 | ✅ 完整路径已实现 |
+| 3.4 招募帖模块 | ❌ 学生招募帖缺失 | ✅ 已实现（队大厅） |
+| 3.5 审核模块 | ⚠️ 无权限/无界面 | ✅ 管理员审核页面已补全 |
+| 3.6 获奖记录模块 | ⚠️ 无上传接口 | ✅ 上传/审核已实现 |
+| 3.7 消息通知模块 | ❌ 完全缺失 | ✅ 已实现（含轮询+操作按钮） |
+| 3.8 数据统计模块 | ⚠️ 枚举错误 | ⚠️ **枚举值仍未修复** |
+| 3.9 AI 推荐模块 | ✅ 已实现 | ⚠️ API Key 失效，服务不可用 |
 
 ---
 
-## 二、逐模块详细审查
+## 二、已修复的 Bug（相比上次报告）
 
-### 3.1 用户模块
+以下条目在上次报告中标注为 Bug，本次确认已修复：
 
-**已完成**
-- 注册（学生/教师，字段校验，学号/用户名唯一）
-- 统一登录（根据 role 跳转三端）
-- JWT Token 鉴权
-- 用户信息查询/更新
-
-**未完成 / 偏差**
-
-| 编号 | PRD要求 | 实际状态 | 影响 |
-|------|---------|---------|------|
-| U-01 | 学生个人主页展示"进行中的竞赛（含状态）"和"历史参赛记录" | `StudentProfile.vue` 只展示了报名 ID 和状态枚举原始值，无竞赛名称关联 | 演示体验差 |
-| U-02 | 老师个人主页：历史带队列表、每个竞赛获奖情况、当前带队数/上限 | 老师端无独立个人主页，`TeacherSelect.vue` 存在但未整合进路由 | 功能缺失 |
-| U-03 | 管理员可禁用/启用用户（`status: DISABLED`） | `UserManage.vue` 禁用按钮无实现，后端无禁用接口 | 功能缺失 |
-| U-04 | 教师列表接口（学生报名时选老师用） | 前端调 `/v1/users/teachers`，后端无此接口（`UserController` 只有 `/list` 带 ADMIN 权限） | 报名页老师列表永远为空 |
-
-**需修复文件：**
-- `backend/controller/UserController.java`：新增 `GET /api/v1/users/teachers`（不限角色可访问，供学生选老师）
-- `backend/controller/UserController.java`：新增 `PUT /api/v1/admin/users/{id}/status`（管理员禁用用户）
-- `frontend/views/StudentProfile.vue`：关联查询竞赛名称展示
-- `frontend/views/teacher/`：新增教师个人主页页面
+| 编号 | 问题 | 修复状态 |
+|------|------|---------|
+| P0-1 | AuditController 无权限注解 | ✅ 已加 `@PreAuthorize("hasRole('ADMIN')")` |
+| P0-5 | 个人赛报名 teacherId 字段不匹配 | ✅ 前端改为 `t.id` 与后端对齐 |
+| P0-6 | 教师列表接口不存在 | ✅ 已加 `GET /api/v1/user/teachers` 且加入白名单 |
+| P1-1 | 管理员/教师页面双重 `.data` 解析 | ✅ 已全部修正 |
+| P1-2 | API 文件用 `request.get/post` | ✅ 全部改为 `request({...})` 格式 |
+| P1-3 | 发布竞赛表单字段不足 | ✅ 已补全所有必填字段 |
+| P1-4 | 获奖等级枚举中文 vs 英文 | ✅ 已改为枚举值 |
+| P1-5 | ApplyList 调用 ADMIN 接口导致 403 | ✅ 改为教师专用接口 |
+| P2-2 | 用户禁用/启用功能 | ✅ 后端接口 + 前端按钮已实现 |
+| P2-4 | 审核列表无关联信息 | ✅ 管理员审核页展示竞赛名/学生信息 |
+| P2-5 | 获奖录入竞赛下拉为空 | ✅ 从接口加载 |
+| P3-1 | admin/111.vue 测试文件 | （不影响功能，可保留） |
 
 ---
 
-### 3.2 竞赛模块
+## 三、仍未修复的 Bug
 
-**已完成**
-- 发布竞赛（字段完整，基础校验）
-- 竞赛列表（分页、筛选、搜索）
-- 竞赛详情
-- 手动下架/恢复
+### 🔴 Bug-1（P0）：StatisticsServiceImpl 使用不存在的竞赛状态枚举
 
-**未完成 / 偏差**
+**文件：** `backend/src/main/java/com/competition/backend/service/impl/StatisticsServiceImpl.java:33-34`
 
-| 编号 | PRD要求 | 实际状态 | 影响 |
-|------|---------|---------|------|
-| C-01 | 竞赛状态根据时间自动流转（UPCOMING→SIGNING→CLOSED→ONGOING→FINISHED） | 无定时任务，状态只在创建时设为 `UPCOMING`，永不自动变更 | 竞赛永远显示"未开始"，无法演示报名中状态 |
-| C-02 | `minTeamSize ≤ maxTeamSize` 校验 | `CompetitionServiceImpl.validateCompetition` 未校验此关系 | 数据异常 |
-| C-03 | 发布竞赛时前端缺少 `competitionStart/End` 时间字段 | `PublishComp.vue` 只有 `signupEnd`，缺少比赛时间和 `signupStart` | 状态流转前提缺失 |
+```java
+.judgingCount(competitionRepository.countByStatus("JUDGING"))  // 数据库无此状态
+.endedCount(competitionRepository.countByStatus("ENDED"))      // 数据库无此状态
+```
 
-**需修复文件：**
-- `backend/task/`：新增 `CompetitionStatusTask.java`，每分钟扫描时间判断自动切换状态
-- `backend/service/impl/CompetitionServiceImpl.java`：补充 `minTeamSize ≤ maxTeamSize` 校验
-- `frontend/views/teacher/PublishComp.vue`：补充 `signupStart`、`competitionStart`、`competitionEnd` 字段
+数据库 `competition` 表的 `status` CHECK 约束只允许：`UPCOMING / SIGNING / CLOSED / ONGOING / FINISHED / OFFLINE`，不存在 `JUDGING` 和 `ENDED`，这两个查询永远返回 0，管理员数据统计"进行中"和"已结束"数字始终为 0。
+
+**修复：**
+```java
+.judgingCount(competitionRepository.countByStatus("ONGOING"))
+.endedCount(competitionRepository.countByStatus("FINISHED"))
+```
 
 ---
 
-### 3.3 报名模块
+### 🔴 Bug-2（P0）：SignupServiceImpl.submitTeam 裸 `.get()` 风险
 
-**已完成**
-- 个人赛报名（创建草稿、老师指导申请、提交管理员审核）
-- 团队赛路径 B 步骤1-3（创建队伍、提交审核）
-- 报名状态管理
+**文件：** `backend/src/main/java/com/competition/backend/service/impl/SignupServiceImpl.java:222,225`
 
-**未完成 / 偏差**
+```java
+Team team = teamRepository.findById(signup.getTeamId()).get();     // 无检查
+Competition comp = competitionRepository.findById(signup.getCompetitionId()).get(); // 无检查
+```
 
-| 编号 | PRD要求 | 实际状态 | 影响 |
-|------|---------|---------|------|
-| S-01 | 老师同意后报名变为 DRAFT，学生手动提交才进入 PENDING | 后端逻辑正确，但前端 `StudentSignup.vue` 直接创建草稿后没有"提交"按钮的明确流程引导 | 流程不清晰 |
-| S-02 | 竞赛达到名额上限后不可新增报名 | Redis 配额校验已实现，但竞赛发布时没有初始化 Redis 计数器（`createCompetition` 有 TODO 注释）| 名额控制实际无效 |
-| S-03 | 路径 B 中老师主导：老师确认人数满足后的"确认组队完成"操作 | 无对应接口，`TeamServiceImpl` 缺少此操作 | 团队赛路径 A 流程中断 |
-| S-04 | 驳回后可修改重新提交（RESUBMITTED 状态） | 后端支持，前端无对应"重新提交"入口 | 流程无法闭环 |
+数据不一致时抛 `NoSuchElementException`，500 错误无有效提示。
 
-**需修复文件：**
-- `backend/service/impl/CompetitionServiceImpl.java`：`createCompetition` 中初始化 Redis 名额计数器（删除 TODO）
-- `frontend/views/StudentProfile.vue`：报名记录加"提交审核"按钮（DRAFT 状态时显示）
-- `frontend/views/StudentProfile.vue`：REJECTED 状态加"重新提交"入口
+**修复：**
+```java
+Team team = teamRepository.findById(signup.getTeamId())
+    .orElseThrow(() -> new BusinessException(ErrorCode.TEAM_NOT_FOUND, "队伍不存在"));
+Competition comp = competitionRepository.findById(signup.getCompetitionId())
+    .orElseThrow(() -> new BusinessException(ErrorCode.COMPETITION_NOT_FOUND, "竞赛不存在"));
+```
 
 ---
 
-### 3.4 招募帖模块
+### 🟡 Bug-3（P1）：RedisSyncTask 类型转换 ClassCastException 风险
 
-**已完成**
-- 老师发布招募帖
-- 老师关闭招募帖
-- 学生申请加入老师招募帖
-- 老师审核申请
+**文件：** `backend/src/main/java/com/competition/backend/task/RedisSyncTask.java:35`
 
-**未完成 / 偏差**
+```java
+Integer remainingQuota = (Integer) redisTemplate.opsForValue().get(key);
+```
 
-| 编号 | PRD要求 | 实际状态 | 影响 |
-|------|---------|---------|------|
-| R-01 | **学生组队招募帖**：队长在获老师同意后发布寻找队友的招募帖 | 后端有 `team_recruitment` 表和 `TeamRecruitment` 实体，但 `RecruitmentController` 只实现了老师招募帖，无学生组队招募帖接口 | 团队赛核心功能缺失 |
-| R-02 | 招募帖列表页（学生查看） | 无对应前端页面和后端 `GET` 接口 | 学生无法发现招募帖 |
-| R-03 | 竞赛报名截止后自动关闭招募帖 | 无实现（依赖定时任务 C-01 未实现） | 规则无法执行 |
+使用 JSON 序列化时，Redis 返回的数字会被反序列化为 `Long`，强转 `Integer` 会抛 `ClassCastException`，导致每 10 分钟的同步任务崩溃，报名人数无法同步。
 
-**需修复文件：**
-- `backend/controller/RecruitmentController.java`：补充学生组队招募帖的 CRUD + 申请接口
-- `backend/service/impl/RecruitmentServiceImpl.java`：实现学生招募帖业务逻辑
-- `frontend/`：新建招募帖列表页面
+**修复：**
+```java
+Object raw = redisTemplate.opsForValue().get(key);
+if (raw == null) continue;
+int remainingQuota = ((Number) raw).intValue();
+```
 
 ---
 
-### 3.5 审核模块
+## 四、功能缺口（前端）
 
-**已完成**
-- 管理员审核报名（INDIVIDUAL/TEAM 两类型）
-- 审核状态流转（APPROVED/REJECTED）
+### ⚠️ 缺口-1：团队赛报名"提交审核"入口缺失
 
-**未完成 / 偏差**
+**现状：** 队长创建了队伍、老师已确认带队，但**前端没有任何入口**让队长提交团队赛报名给管理员审核。
 
-| 编号 | PRD要求 | 实际状态 | 影响 |
-|------|---------|---------|------|
-| A-01 | `AuditController` 无 `@PreAuthorize`，任何登录用户均可调用 | 越权漏洞（已在 code-review 报告中标注） | 安全风险 |
-| A-02 | 管理员驳回后通知老师，老师通知学生/队长修改并重提 | 通知模块未实现，驳回只更新状态无通知 | 流程中断 |
-| A-03 | 前端审核列表需展示参赛人员基本信息、老师信息、竞赛信息 | `ApplyList.vue` 只展示 ID 和状态，无关联信息 | 演示体验差 |
+- 后端接口 `POST /api/v1/signups/team/{id}/submit` ✅ 存在
+- 后端接口 `POST /api/v1/signups/team` ✅ 创建报名草稿存在
+- 前端 `TeamDetail.vue` ❌ 无"提交审核"按钮
+- 前端 `MyTeams.vue` ❌ 无相关入口
 
-**需修复文件：**
-- `backend/controller/AuditController.java`：加 `@PreAuthorize("hasRole('ADMIN')")`
-- `frontend/views/teacher/ApplyList.vue`：关联展示学生姓名、学号、竞赛名称
+**需要实现：** 在 `TeamDetail.vue` 的队长操作区，当 `team.status === 'FORMING'` 且 `team.teacherConfirmed === true` 时，显示"创建报名并提交审核"按钮，调用：
+1. `POST /v1/signups/team`（body: `{ teamId }`）创建草稿
+2. `POST /v1/signups/team/{signupId}/submit` 提交审核
 
 ---
 
-### 3.6 获奖记录模块
+### ⚠️ 缺口-2：AI 推荐服务不可用
 
-**已完成**
-- 提交获奖记录（字段完整，奖项等级枚举正确）
-- 管理员审核获奖记录
+**现状：** 硅基流动 API Key（`sk-eiqfjrjjytjwwzkkrsnsvubavkkjoqubkhlpkcwfjzmmvnbl`）已失效，后端返回 `code: 40200 "AI推荐服务暂时不可用"`。
 
-**未完成 / 偏差**
-
-| 编号 | PRD要求 | 实际状态 | 影响 |
-|------|---------|---------|------|
-| W-01 | 上传获奖证书图片（`certificateUrl` 为本地存储路径） | 后端无文件上传接口，`AwardController` 无 `/upload` 端点，前端 `AwardInput.vue` 直接填 URL 文本 | 证书无法上传 |
-| W-02 | 只有报名已生效（APPROVED）的学生才能提交获奖记录 | `AwardServiceImpl` 未校验关联报名是否 APPROVED | 数据准确性风险 |
-| W-03 | 审核通过后展示在老师主页带队成绩中 | 老师主页未实现（U-02 问题） | 功能缺失 |
-| W-04 | 前端 `AwardInput.vue` 的竞赛下拉列表为空 | `compId` 的 `<select>` 无数据源 | 无法选择竞赛 |
-
-**需修复文件：**
-- `backend/controller/AwardController.java`：新增 `POST /api/v1/award/upload` 文件上传接口
-- `backend/service/impl/AwardServiceImpl.java`：创建前校验关联报名状态
-- `frontend/views/teacher/AwardInput.vue`：竞赛下拉列表从接口加载数据
+- 本地开发用 VS Code 启动，Spring Boot 不会自动读取 `.env` 文件
+- 即使 `.env` 里有 Key，`SILICONFLOW_API_KEY` 环境变量实际为空
+- 需要更新有效 Key 并配置到 `application-dev.yml` 或 VS Code 启动配置
 
 ---
 
-### 3.7 消息通知模块
+## 五、课程验收项对照（6.2）
 
-**完全未实现**
-
-| 编号 | PRD要求 | 实际状态 |
-|------|---------|---------|
-| N-01 | RabbitMQ 异步推送通知 | 后端有 RabbitMQ 配置（docker-compose.yml），但无任何 Producer/Consumer 代码 |
-| N-02 | `sys_notification` 表已建，无写入逻辑 | 表存在，Service/Controller 层完全空缺 |
-| N-03 | 前端顶栏显示未读通知数（红点），支持查看/已读 | 三端均无通知入口 |
-| N-04 | 前端每 30 秒轮询未读数 | 未实现 |
-
-**需新建文件：**
-- `backend/service/NotificationService.java` + impl
-- `backend/controller/NotificationController.java`（`GET /api/v1/notifications`、`PUT /api/v1/notifications/{id}/read`）
-- `backend/mq/NotificationProducer.java` + `NotificationConsumer.java`
-- 前端三端 Layout 通知图标组件
-
----
-
-### 3.8 数据统计模块
-
-**已完成**
-- 用户统计（总数、学生数、教师数）
-- 竞赛统计（总数、各状态数）
-- 获奖统计（总数、通过数、待审核数）
-
-**未完成 / 偏差**
-
-| 编号 | PRD要求 | 实际状态 |
-|------|---------|---------|
-| D-01 | "活跃用户数（近30天有操作记录）" | 未实现，无操作记录追踪 |
-| D-02 | "各竞赛报名人数" | 未实现 |
-| D-03 | "各竞赛审核通过率" | 未实现 |
-| D-04 | "按奖项等级分布的获奖数量" | 未实现 |
-| D-05 | `StatisticsVO.CompetitionStats` 中 `judgingCount` 使用状态 `"JUDGING"` 不存在 | 已在上次报告修复，但后端服务未重启 | 数据统计全为0 |
-
----
-
-### 3.9 AI 推荐模块
-
-**基本完成**
-- LangChain4j + PGVector RAG 链路已实现
-- 接口 `POST /api/v1/ai/recommend` 已实现
-- 知识库刷新接口已实现
-
-**偏差**
-
-| 编号 | PRD要求 | 实际状态 |
-|------|---------|---------|
-| AI-01 | 出参包含 `competitionName`、`reason`、`source`、`matchScore` 结构化列表 | 实际返回的是 LLM 原始文本字符串，非结构化 JSON | 演示时展示格式与 PRD 不符 |
-| AI-02 | 入参字段名为 `direction` | 后端 `AiRecommendRequest` 字段为 `prompt` | 轻微偏差，不影响功能 |
-
----
-
-## 三、课程验收项对照（6.2）
+### 软件工程课程
 
 | 验收项 | 状态 |
 |--------|------|
-| 前端增删改查，数据库同步变化 | ✅ |
-| 多端完整闭环（报名→审核→通知） | ❌ 通知未实现，闭环不完整 |
-| GitHub 4人均有提交 | 待确认 |
-| 核心流程无阻塞性 Bug | ⚠️ 老师列表 404 导致个人赛报名阻塞 |
-| 无 JSP，严格前后端分离 | ✅ |
-| ≥15 个 RESTful 接口 | ✅（现有约 25 个） |
-| PostgreSQL ≥6 张核心表 | ✅（14 张表） |
-| Redis 缓存已实现 | ⚠️ 已实现但名额初始化 TODO 未完成 |
-| RabbitMQ 异步消息已实现 | ❌ 完全未实现 |
-| 并发控制已实现 | ⚠️ 代码存在但名额初始化缺失导致实际无效 |
-| Spring Security 三角色 | ✅ |
-| Docker 一键启动 | ✅ |
-| AI 推荐已实现 | ✅ |
+| 前端增删改查操作，数据库同步变化 | ✅ |
+| 多端完整闭环（报名→审核→通知反馈） | ✅ 个人赛闭环完整；团队赛缺提交入口 |
+| GitHub 4人均有有效提交记录 | 需确认 |
+| 系统可正常运行，核心流程无阻塞性 Bug | ⚠️ 团队赛提交审核入口缺失 |
+
+### 服务端开发课程
+
+| 验收项 | 状态 |
+|--------|------|
+| 无 JSP/Thymeleaf，严格前后端分离 | ✅ |
+| Controller/Service/Repository 分层清晰 | ✅ |
+| ≥15 个 RESTful 接口，统一返回体 | ✅（约 55 个接口） |
+| PostgreSQL ≥6 张核心表，关联完整 | ✅（14 张表） |
+| Maven 工程化，Git 协作记录完整 | ✅ |
+| Redis 缓存已实现（带队计数+名额控制） | ✅ |
+| RabbitMQ 异步消息已实现 | ⚠️ **配置存在但无 Producer/Consumer 代码** |
+| 并发控制已实现（Redis+乐观锁） | ✅ Redis Lua 脚本已实现 |
+| Spring Security 权限已实现（三角色） | ✅ |
+| Docker 一键启动已实现 | ✅ |
+| AI 推荐功能已实现（LangChain4j+RAG） | ⚠️ 代码已实现，API Key 失效 |
 
 ---
 
-## 四、优先修复建议（按影响排序）
+## 六、优先修复建议
 
-### 🔴 P0 — 影响演示核心流程
+按答辩影响排序：
 
-1. **老师列表接口缺失**（U-04）：`POST /api/v1/users/teachers`，不加权限，学生报名时才能选老师
-2. **竞赛状态自动流转**（C-01）：加定时任务，否则所有竞赛显示"未开始"，报名入口不可用
-3. **Redis 名额初始化**（S-02）：删除 `createCompetition` 中的 TODO，创建竞赛时初始化计数器
+1. **团队赛提交审核入口**（缺口-1）—— 演示时直接影响团队赛核心流程
+2. **StatisticsServiceImpl 枚举值**（Bug-1）—— 数据统计全为 0，管理员看板数据错误
+3. **AI Key 更新**（缺口-2）—— 演示 AI 功能时不可用
+4. **RedisSyncTask ClassCastException**（Bug-3）—— 不影响功能演示，但长时间运行会导致计数漂移
+5. **submitTeam 裸 .get()**（Bug-2）—— 正常流程不触发，但数据异常时报 500
 
-### 🟡 P1 — 影响流程完整度
+---
 
-4. **消息通知基础实现**（N-01~04）：至少实现数据库写入 + 查询，RabbitMQ 可简化为同步调用
-5. **AuditController 权限补充**（A-01）：加 `@PreAuthorize("hasRole('ADMIN')")` 修复安全漏洞
-6. **文件上传接口**（W-01）：证书上传是获奖记录的前提
-7. **前端报名重提流程**（S-04）：DRAFT/REJECTED 状态下加操作按钮
+## 七、已完成功能总览
 
-### 🟢 P2 — 提升完整度
+以下功能经代码审查确认已完整实现：
 
-8. **学生组队招募帖**（R-01）：团队赛路径 B 的关键功能
-9. **发布竞赛表单补全**（C-03）：加报名开始时间和比赛时间字段
-10. **用户禁用功能**（U-03）：管理员的基础用户管理能力
+**用户模块：** 注册（含角色校验）、统一登录（按 role 分流）、个人信息编辑、用户禁用/启用、教师列表
+
+**竞赛模块：** 发布竞赛（完整字段）、竞赛列表（筛选分页）、竞赛详情、状态自动流转（定时任务每分钟）、下架/恢复
+
+**个人赛报名：** 学生选老师报名 → 老师同意指导（通知） → 学生提交管理员 → 管理员审核（通知） → 被驳回可重提
+
+**团队赛：** 创建队伍、申请老师带队、老师同意（teacherConfirmed=true）、邀请/招募队友、申请加入、队伍大厅、成员管理
+
+**招募帖：** 老师发布/关闭招募帖、学生申请加入、老师处理申请；学生组队招募帖（队大厅）
+
+**审核模块：** 管理员个人赛/团队赛报名审核页面（含驳回填原因）、获奖审核页面
+
+**获奖记录：** 提交记录（含证书上传）、管理员审核
+
+**消息通知：** 写入数据库、前端铃铛（30秒轮询未读数）、通知面板（支持直接操作同意/拒绝）、全部已读
+
+**数据统计：** 用户/竞赛/获奖统计（竞赛枚举值有误，见 Bug-1）
+
+**AI 推荐：** LangChain4j + PGVector RAG 链路代码已实现（API Key 失效）
