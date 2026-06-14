@@ -30,8 +30,8 @@ public class StatisticsServiceImpl implements StatisticsService {
         StatisticsVO.CompetitionStats compStats = StatisticsVO.CompetitionStats.builder()
                 .totalCompetitions(competitionRepository.count())
                 .signingCount(competitionRepository.countByStatus("SIGNING"))
-                .judgingCount(competitionRepository.countByStatus("JUDGING"))
-                .endedCount(competitionRepository.countByStatus("ENDED"))
+                .judgingCount(competitionRepository.countByStatus("ONGOING"))
+                .endedCount(competitionRepository.countByStatus("FINISHED"))
                 .build();
 
         // 3. 组装获奖统计

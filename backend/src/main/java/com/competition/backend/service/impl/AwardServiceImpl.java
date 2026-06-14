@@ -13,6 +13,8 @@ import com.competition.backend.repository.IndividualSignupRepository;
 import com.competition.backend.repository.SysUserRepository;
 import com.competition.backend.repository.TeamSignupRepository;
 import com.competition.backend.service.AwardService;
+import com.competition.backend.service.NotificationService;
+import com.competition.backend.repository.CompetitionRepository;
 import com.competition.backend.vo.AwardVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -29,6 +31,8 @@ public class AwardServiceImpl implements AwardService {
     private final SysUserRepository sysUserRepository;
     private final IndividualSignupRepository individualSignupRepository;
     private final TeamSignupRepository teamSignupRepository;
+    private final NotificationService notificationService;
+    private final CompetitionRepository competitionRepository;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -63,8 +67,16 @@ public class AwardServiceImpl implements AwardService {
                 .awardDate(dto.getAwardDate())
                 .status("PENDING")
                 .build();
+        AwardRecord saved = awardRecordRepository.save(record);
 
-        awardRecordRepository.save(record);
+        // 通知管理员：有获奖记录待审核
+        String submitterName = sysUserRepository.findById(userId).map(u -> u.getRealName()).orElse("用户");
+        String compTitle = competitionRepository.findById(dto.getCompetitionId()).map(c -> c.getTitle()).orElse("竞赛");
+        sysUserRepository.findAll().stream()
+                .filter(u -> "ADMIN".equals(u.getRole()) && "ACTIVE".equals(u.getStatus()))
+                .forEach(admin -> notificationService.send(admin.getId(), "AWARD_SUBMITTED", "获奖记录待审核",
+                        "「" + submitterName + "」提交了「" + compTitle + "」获奖记录，请前往审核",
+                        saved.getId()));
     }
 
     @Override
@@ -95,6 +107,16 @@ public class AwardServiceImpl implements AwardService {
                 .rejectReason(dto.getRejectReason())
                 .build();
         awardAuditRepository.save(auditLog);
+
+        // 通知提交人审核结果
+        String notifTitle = "APPROVED".equals(dto.getResult()) ? "获奖记录审核通过" : "获奖记录审核驳回";
+        String notifContent = "APPROVED".equals(dto.getResult())
+                ? "你提交的获奖记录「" + record.getAwardName() + "」已审核通过"
+                : "你提交的获奖记录「" + record.getAwardName() + "」被驳回" +
+                  (dto.getRejectReason() != null ? "，原因：" + dto.getRejectReason() : "");
+        notificationService.send(record.getSubmitterId(),
+                "APPROVED".equals(dto.getResult()) ? "AWARD_APPROVED" : "AWARD_REJECTED",
+                notifTitle, notifContent, record.getId());
     }
 
     @Override

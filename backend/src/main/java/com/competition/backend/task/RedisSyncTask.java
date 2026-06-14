@@ -32,9 +32,12 @@ public class RedisSyncTask {
         for (String key : keys) {
             try {
                 Long compId = Long.parseLong(key.replace("comp:quota:", ""));
-                Integer remainingQuota = (Integer) redisTemplate.opsForValue().get(key);
-                
+                Object raw = redisTemplate.opsForValue().get(key);
+                if (raw == null) continue;
+                int remainingQuota = ((Number) raw).intValue();
+
                 competitionRepository.findById(compId).ifPresent(comp -> {
+                    if (comp.getMaxQuota() == null) return;
                     int enrolled = comp.getMaxQuota() - remainingQuota;
                     if (comp.getEnrolledCount() != enrolled) {
                         comp.setEnrolledCount(enrolled);

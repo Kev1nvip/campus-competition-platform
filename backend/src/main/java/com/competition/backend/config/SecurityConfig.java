@@ -44,6 +44,8 @@ public class SecurityConfig {
             "/api/v1/competitions/**",
             // 教师列表（学生报名选老师用，无需登录）
             "/api/v1/user/teachers",
+            // 上传文件静态资源访问（证书图片等）
+            "/uploads/**",
             // Knife4j 文档
             "/doc.html",
             "/webjars/**",

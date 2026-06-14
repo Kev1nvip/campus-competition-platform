@@ -80,7 +80,7 @@ class CompetitionControllerTest {
         @DisplayName("2.1.1 - 分页列表查询成功")
         void list_success() throws Exception {
             CompetitionListVO vo = new CompetitionListVO();
-            vo.setCompetitionId(1L);
+            // vo.setCompetitionId(1L);
             vo.setTitle("竞赛A");
             vo.setType("INDIVIDUAL");
             vo.setStatus("SIGNING");

@@ -76,7 +76,7 @@
             <el-option
               v-for="c in competitions"
               :key="c.id"
-              :label="`${c.title}（${c.type === 'TEAM' ? '团队赛' : '个人赛'}）`"
+              :label="c.title"
               :value="c.id"
             />
           </el-select>
@@ -138,7 +138,7 @@ const fetchTeams = async () => {
 const fetchCompetitions = async () => {
   compLoading.value = true
   try {
-    const res = await competitionApi.getList({ page: 1, size: 200 })
+    const res = await competitionApi.getList({ page: 1, size: 200, type: 'TEAM' })
     if (res.code === 0) competitions.value = res.data.list
   } finally {
     compLoading.value = false
