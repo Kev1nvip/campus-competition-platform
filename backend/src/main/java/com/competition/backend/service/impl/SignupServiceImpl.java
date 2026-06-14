@@ -9,6 +9,7 @@ import com.competition.backend.entity.*;
 import com.competition.backend.repository.*;
 import com.competition.backend.service.RedisService;
 import com.competition.backend.service.SignupService;
+import com.competition.backend.service.NotificationService;
 import com.competition.backend.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -31,6 +32,7 @@ public class SignupServiceImpl implements SignupService {
     private final ApplyRecordRepository applyRecordRepository;
     private final TeamRepository teamRepository;
     private final RedisService redisService;
+    private final NotificationService notificationService;
 
         @Override
     @Transactional(rollbackFor = Exception.class)
@@ -116,7 +118,7 @@ public class SignupServiceImpl implements SignupService {
                 .build();
         IndividualSignup savedSignup = individualSignupRepository.save(signup);
 
-        // 6. 发送指导申请
+        // 6. 发送指导申请，并通知老师
         ApplyRecord apply = ApplyRecord.builder()
                 .type("INDIVIDUAL_GUIDE")
                 .applicantId(studentId)
@@ -125,7 +127,13 @@ public class SignupServiceImpl implements SignupService {
                 .motivation(dto.getMotivation())
                 .status("PENDING")
                 .build();
-        applyRecordRepository.save(apply);
+        ApplyRecord savedApply = applyRecordRepository.save(apply);
+
+        String studentName = userRepository.findById(studentId).map(u -> u.getRealName()).orElse("同学");
+        String compTitle = comp.getTitle();
+        notificationService.send(dto.getTeacherId(), "APPLY_RECEIVED", "收到指导申请",
+                "「" + studentName + "」申请你指导参赛竞赛「" + compTitle + "」",
+                savedApply.getId());
 
         Map<String, Object> result = new HashMap<>();
         result.put("signupId", savedSignup.getId());
@@ -162,6 +170,16 @@ public class SignupServiceImpl implements SignupService {
         signup.setStatus("PENDING");
         signup.setSubmittedAt(OffsetDateTime.now());
         individualSignupRepository.save(signup);
+
+        // 通知管理员：个人赛报名已提交审核
+        String studentName = userRepository.findById(signup.getStudentId()).map(u -> u.getRealName()).orElse("学生");
+        String compTitle = competitionRepository.findById(signup.getCompetitionId()).map(c -> c.getTitle()).orElse("竞赛");
+        // 通知所有管理员（通过 role=ADMIN 批量查询）
+        userRepository.findAll().stream()
+                .filter(u -> "ADMIN".equals(u.getRole()) && "ACTIVE".equals(u.getStatus()))
+                .forEach(admin -> notificationService.send(admin.getId(), "AUDIT_SUBMITTED", "个人赛报名待审核",
+                        "「" + studentName + "」提交了「" + compTitle + "」个人赛报名，请前往审核",
+                        signup.getId()));
     }
 
     @Override
@@ -219,10 +237,12 @@ public class SignupServiceImpl implements SignupService {
         TeamSignup signup = teamSignupRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.SIGNUP_NOT_FOUND, "报名记录不存在"));
         
-        Team team = teamRepository.findById(signup.getTeamId()).get();
+        Team team = teamRepository.findById(signup.getTeamId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.TEAM_NOT_FOUND, "队伍不存在"));
         SecurityUtil.checkSelf(team.getLeaderId());
 
-        Competition comp = competitionRepository.findById(signup.getCompetitionId()).get();
+        Competition comp = competitionRepository.findById(signup.getCompetitionId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPETITION_NOT_FOUND, "竞赛不存在"));
 
         // 校验人数
         if (team.getMemberCount() < comp.getMinTeamSize()) {
@@ -232,8 +252,17 @@ public class SignupServiceImpl implements SignupService {
         signup.setStatus("PENDING");
         signup.setSubmittedAt(OffsetDateTime.now());
         teamSignupRepository.save(signup);
-        
+
         team.setStatus("SUBMITTED");
         teamRepository.save(team);
+
+        // 通知管理员：团队赛报名已提交审核
+        String leaderName = userRepository.findById(team.getLeaderId()).map(u -> u.getRealName()).orElse("队长");
+        String compTitle2 = comp.getTitle();
+        userRepository.findAll().stream()
+                .filter(u -> "ADMIN".equals(u.getRole()) && "ACTIVE".equals(u.getStatus()))
+                .forEach(admin -> notificationService.send(admin.getId(), "AUDIT_SUBMITTED", "团队赛报名待审核",
+                        "「" + leaderName + "」队伍提交了「" + compTitle2 + "」团队赛报名，请前往审核",
+                        signup.getId()));
     }
 }

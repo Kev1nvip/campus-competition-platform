@@ -46,18 +46,38 @@
       <div v-if="activeTab === 'signups'" class="tab-content">
         <div v-if="signups.length === 0" class="center-tip">暂无报名记录</div>
         <el-table v-else :data="signups" class="data-table">
-          <el-table-column label="竞赛 ID" prop="competitionId" width="90" />
-          <el-table-column label="状态" prop="status" width="110">
+          <el-table-column label="类型" width="80">
+            <template #default="{ row }: { row: any }">
+              <el-tag size="small" :type="row.bizType === 'TEAM' ? 'info' : ''">
+                {{ row.bizType === 'TEAM' ? '团队赛' : '个人赛' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="竞赛名称" prop="competitionTitle" min-width="150">
+            <template #default="{ row }: { row: any }">
+              {{ row.competitionTitle || `竞赛 #${row.competitionId}` }}
+            </template>
+          </el-table-column>
+          <el-table-column label="队伍 / 老师" min-width="100">
+            <template #default="{ row }: { row: any }">
+              <span v-if="row.bizType === 'TEAM'">{{ row.teamName || '—' }}</span>
+              <span v-else>{{ row.teacherName || '—' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="状态" width="110">
             <template #default="{ row }: { row: any }">
               <el-tag size="small" :type="signupTagType(row.status)">{{ signupStatusText(row.status) }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="提交时间" prop="submittedAt" />
-          <el-table-column label="操作" width="140">
+          <el-table-column label="提交时间" width="120">
             <template #default="{ row }: { row: any }">
-              <!-- DRAFT：老师已同意，等待学生提交管理员审核 -->
+              {{ row.submittedAt ? new Date(row.submittedAt).toLocaleDateString('zh-CN') : '—' }}
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="120">
+            <template #default="{ row }: { row: any }">
               <el-button
-                v-if="row.status === 'DRAFT'"
+                v-if="row.status === 'DRAFT' && row.bizType === 'INDIVIDUAL'"
                 size="small"
                 type="primary"
                 :loading="row._submitting"
@@ -65,9 +85,8 @@
               >
                 提交审核
               </el-button>
-              <!-- REJECTED：被驳回，可修改后重新提交 -->
               <el-button
-                v-else-if="row.status === 'REJECTED'"
+                v-else-if="row.status === 'REJECTED' && row.bizType === 'INDIVIDUAL'"
                 size="small"
                 :loading="row._submitting"
                 @click="handleResubmit(row)"
@@ -106,10 +125,14 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useRoute } from 'vue-router'
 import request from '@/utils/request'
 import { signupApi } from '@/api/signup'
 
-const activeTab = ref('profile')
+const route = useRoute()
+
+// 根据路由路径决定默认 tab：/student/signups 默认打开报名记录
+const activeTab = ref(route.path.includes('/signups') ? 'signups' : 'profile')
 const userInfo = ref<any>(null)
 const editForm = reactive({ realName: '', phone: '', email: '', department: '', title: '' })
 const signups = ref<any[]>([])
@@ -139,8 +162,20 @@ const loadProfile = async () => {
 
 const loadSignups = async () => {
   try {
-    const res: any = await request({ url: '/v1/signups/individual/my', method: 'GET', params: { page: 1, size: 50 } })
-    if (res.code === 0) signups.value = (res.data.list ?? []).map((s: any) => ({ ...s, _submitting: false }))
+    const [indRes, teamRes]: [any, any] = await Promise.all([
+      request({ url: '/v1/signups/individual/my', method: 'GET', params: { page: 1, size: 50 } }),
+      request({ url: '/v1/signups/team/my', method: 'GET' })
+    ])
+    const individual = (indRes.code === 0 ? indRes.data.list ?? [] : [])
+      .map((s: any) => ({ ...s, _submitting: false, bizType: 'INDIVIDUAL' }))
+    const team = (teamRes.code === 0 ? teamRes.data ?? [] : [])
+      .map((s: any) => ({ ...s, _submitting: false, bizType: 'TEAM' }))
+    // 按提交时间倒序合并
+    signups.value = [...individual, ...team].sort((a, b) => {
+      const ta = a.submittedAt ? new Date(a.submittedAt).getTime() : 0
+      const tb = b.submittedAt ? new Date(b.submittedAt).getTime() : 0
+      return tb - ta
+    })
   } catch { /* ignore */ }
 }
 
