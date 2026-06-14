@@ -39,6 +39,23 @@
         <el-button type="primary" :loading="operating" @click="confirmReject">确认驳回</el-button>
       </template>
     </el-dialog>
+
+    <!-- 证书预览弹窗 -->
+    <el-dialog v-model="certVisible" title="获奖证书" width="640px" align-center>
+      <div class="cert-preview">
+        <img
+          :src="certUrl"
+          alt="获奖证书"
+          class="cert-img"
+          @error="certLoadError = true"
+        />
+        <div v-if="certLoadError" class="cert-error">证书图片加载失败，请检查文件是否存在</div>
+      </div>
+      <template #footer>
+        <el-button @click="certVisible = false">关闭</el-button>
+        <el-button type="primary" @click="downloadCert">下载证书</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -53,6 +70,9 @@ const list = ref<any[]>([])
 const rejectVisible = ref(false)
 const rejectReason = ref('')
 const currentRow = ref<any>(null)
+const certVisible = ref(false)
+const certUrl = ref('')
+const certLoadError = ref(false)
 
 const levelText = (l: string) => (({
   NATIONAL_FIRST: '国家级一等奖', NATIONAL_SECOND: '国家级二等奖', NATIONAL_THIRD: '国家级三等奖',
@@ -98,7 +118,19 @@ const confirmReject = async () => {
   operating.value = false
 }
 
-const openCert = (url: string) => window.open(url, '_blank')
+const openCert = (url: string) => {
+  certUrl.value = url
+  certLoadError.value = false
+  certVisible.value = true
+}
+
+const downloadCert = () => {
+  const a = document.createElement('a')
+  a.href = certUrl.value
+  a.download = '获奖证书'
+  a.target = '_blank'
+  a.click()
+}
 
 onMounted(loadList)
 </script>
@@ -108,4 +140,7 @@ onMounted(loadList)
 .center-tip { text-align: center; padding: 40px; color: #aaa; font-size: 14px; }
 .data-table { width: 100%; background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; }
 .none-text { font-size: 13px; color: #ccc; }
+.cert-preview { display: flex; justify-content: center; align-items: center; min-height: 200px; }
+.cert-img { max-width: 100%; max-height: 70vh; border-radius: 4px; }
+.cert-error { color: #aaa; font-size: 13px; }
 </style>

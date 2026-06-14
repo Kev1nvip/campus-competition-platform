@@ -103,13 +103,26 @@
       <div v-if="activeTab === 'awards'" class="tab-content">
         <div v-if="awards.length === 0" class="center-tip">暂无获奖记录</div>
         <el-table v-else :data="awards" class="data-table">
-          <el-table-column label="奖项名称" prop="awardName" />
+          <el-table-column label="竞赛名称" prop="competitionTitle" min-width="150">
+            <template #default="{ row }: { row: any }">
+              {{ row.competitionTitle || `竞赛 #${row.competitionId}` }}
+            </template>
+          </el-table-column>
+          <el-table-column label="奖项名称" prop="awardName" min-width="140" />
           <el-table-column label="奖项等级" prop="awardLevel" width="130">
             <template #default="{ row }: { row: any }">
               {{ awardLevelText(row.awardLevel) }}
             </template>
           </el-table-column>
-          <el-table-column label="状态" prop="status" width="90">
+          <el-table-column label="类型" width="80">
+            <template #default="{ row }: { row: any }">
+              <el-tag size="small" :type="row.bizType === 'TEAM' ? 'info' : ''" effect="plain">
+                {{ row.bizType === 'TEAM' ? '团队赛' : '个人赛' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="获奖日期" prop="awardDate" width="110" />
+          <el-table-column label="状态" width="90">
             <template #default="{ row }: { row: any }">
               <el-tag size="small" :type="row.status === 'APPROVED' ? 'success' : row.status === 'REJECTED' ? 'danger' : 'warning'">
                 {{ row.status === 'APPROVED' ? '已通过' : row.status === 'REJECTED' ? '已驳回' : '待审核' }}
@@ -182,7 +195,7 @@ const loadSignups = async () => {
 const loadAwards = async () => {
   try {
     const res: any = await request({ url: '/v1/award/my', method: 'GET' })
-    if (res.code === 0) awards.value = res.data.content ?? res.data.list ?? []
+    if (res.code === 0) awards.value = Array.isArray(res.data) ? res.data : (res.data?.content ?? res.data?.list ?? [])
   } catch { /* ignore */ }
 }
 

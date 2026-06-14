@@ -31,6 +31,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -44,6 +45,9 @@ public class AwardController {
     private final AwardRecordRepository awardRecordRepository;
     private final SysUserRepository userRepository;
     private final CompetitionRepository competitionRepository;
+    private final com.competition.backend.repository.IndividualSignupRepository individualSignupRepository;
+    private final com.competition.backend.repository.TeamMemberRepository teamMemberRepository;
+    private final com.competition.backend.repository.TeamSignupRepository teamSignupRepository;
 
     @Value("${upload.path:./uploads}")
     private String uploadPath;
@@ -107,12 +111,48 @@ public class AwardController {
         return Result.success(page);
     }
 
-    @Operation(summary = "查询我的获奖记录")
+    @Operation(summary = "查询我的获奖记录（按学生报名关联查询）")
     @GetMapping("/my")
-    public Result<Page<AwardVO>> getMyAwards(Pageable pageable) {
+    public Result<List<Map<String, Object>>> getMyAwards() {
         Long userId = SecurityUtil.getCurrentUserId();
-        Page<AwardVO> page = awardService.getMyAwards(userId, pageable);
-        return Result.success(page);
+        List<Map<String, Object>> result = new java.util.ArrayList<>();
+
+        // 个人赛：通过 individual_signup.student_id 关联
+        individualSignupRepository.findByStudentId(userId,
+                org.springframework.data.domain.PageRequest.of(0, 200)).forEach(signup -> {
+            awardRecordRepository.findAll().stream()
+                    .filter(r -> "INDIVIDUAL".equals(r.getBizType()) && r.getBizId().equals(signup.getId()))
+                    .forEach(r -> result.add(buildAwardItem(r)));
+        });
+
+        // 团队赛：通过 team_member.student_id → team → team_signup 关联
+        teamMemberRepository.findByStudentId(userId).forEach(member -> {
+            teamSignupRepository.findAll().stream()
+                    .filter(ts -> ts.getTeamId().equals(member.getTeamId()))
+                    .forEach(ts -> {
+                        awardRecordRepository.findAll().stream()
+                                .filter(r -> "TEAM".equals(r.getBizType()) && r.getBizId().equals(ts.getId()))
+                                .forEach(r -> result.add(buildAwardItem(r)));
+                    });
+        });
+
+        return Result.success(result);
+    }
+
+    private Map<String, Object> buildAwardItem(com.competition.backend.entity.AwardRecord r) {
+        Map<String, Object> item = new java.util.HashMap<>();
+        item.put("id", r.getId());
+        item.put("awardName", r.getAwardName());
+        item.put("awardLevel", r.getAwardLevel());
+        item.put("awardDate", r.getAwardDate());
+        item.put("certificateUrl", r.getCertificateUrl());
+        item.put("bizType", r.getBizType());
+        item.put("bizId", r.getBizId());
+        item.put("status", r.getStatus());
+        item.put("createdAt", r.getCreatedAt());
+        competitionRepository.findById(r.getCompetitionId())
+                .ifPresent(c -> item.put("competitionTitle", c.getTitle()));
+        return item;
     }
 
     @Operation(summary = "管理员查询待审核获奖记录列表")
