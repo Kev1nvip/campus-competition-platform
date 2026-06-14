@@ -1,5 +1,4 @@
 services:
-
   # ================================
   # PostgreSQL + PGVector
   # ================================
@@ -9,9 +8,9 @@ services:
     command: postgres -c 'timezone=PRC'
     environment:
       TZ: Asia/Shanghai
-      POSTGRES_DB: campus_competition
-      POSTGRES_USER: competition
-      POSTGRES_PASSWORD: competition123
+      POSTGRES_DB: ${DB_NAME:-campus_competition}
+      POSTGRES_USER: ${DB_USERNAME:-competition}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-competition123}
     ports:
       - "5432:5432"
     volumes:
@@ -19,13 +18,21 @@ services:
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U competition -d campus_competition"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-competition} -d ${DB_NAME:-campus_competition}"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
     networks:
       - competition-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
 
   # ================================
   # Redis
@@ -33,17 +40,25 @@ services:
   redis:
     image: redis:7.2-alpine
     container_name: competition-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis123} --maxmemory 256mb --maxmemory-policy allkeys-lru
     ports:
       - "6735:6379"
-    command: redis-server --requirepass redis123
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "redis123", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis123}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
       - competition-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
 
   # ================================
   # RabbitMQ
@@ -53,8 +68,8 @@ services:
     container_name: competition-rabbitmq
     environment:
       TZ: Asia/Shanghai
-      RABBITMQ_DEFAULT_USER: competition
-      RABBITMQ_DEFAULT_PASS: competition123
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-competition}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-competition123}
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -67,6 +82,14 @@ services:
       start_period: 30s
     networks:
       - competition-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
 
   # ================================
   # SpringBoot 后端
@@ -77,33 +100,32 @@ services:
       dockerfile: Dockerfile
     container_name: competition-backend
     environment:
-      SPRING_PROFILES_ACTIVE: prod
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
       # 数据库
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_NAME: campus_competition
-      DB_USERNAME: competition
-      DB_PASSWORD: competition123
+      DB_NAME: ${DB_NAME:-campus_competition}
+      DB_USERNAME: ${DB_USERNAME:-competition}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-competition123}
       # Redis
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      REDIS_PASSWORD: redis123
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
       # RabbitMQ
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
-      RABBITMQ_USERNAME: competition
-      RABBITMQ_PASSWORD: competition123
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-competition}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-competition123}
       # JWT
-      JWT_SECRET: campus-competition-platform-jwt-secret-key-for-production-environment-2026
-      JWT_EXPIRATION: 7200
+      JWT_SECRET: ${JWT_SECRET:-campus-competition-jwt-secret-key-2026}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-7200}
       # 文件上传
-      UPLOAD_PATH: /app/uploads
+      UPLOAD_PATH: ${UPLOAD_PATH:-/app/uploads}
       # AI配置
       SILICONFLOW_API_KEY: ${SILICONFLOW_API_KEY}
-    ports:
-      - "8080:8080"
+    # ports 移除 8080 暴露，仅容器内网访问
     volumes:
-      - ./uploads:/app/uploads
+      - uploads_data:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -114,6 +136,14 @@ services:
     restart: unless-stopped
     networks:
       - competition-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
 
   # ================================
   # Nginx + 前端
@@ -130,6 +160,14 @@ services:
     restart: unless-stopped
     networks:
       - competition-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
 
 # ================================
 # 网络
@@ -139,8 +177,18 @@ networks:
     driver: bridge
 
 # ================================
-# 数据卷
+# 数据卷（绑定挂载到宿主机 /data）
 # ================================
 volumes:
   postgres_data:
     driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /data/postgres
+  uploads_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /data/uploads

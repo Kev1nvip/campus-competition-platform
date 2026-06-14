@@ -28,4 +28,5 @@ RUN mkdir -p /app/uploads
 
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-jar", "-Dfile.encoding=UTF-8", "app.jar"]
+# 增加时区配置，匹配 Asia/Shanghai
+ENTRYPOINT ["java", "-jar", "-Dfile.encoding=UTF-8", "-Duser.timezone=Asia/Shanghai", "-Xms256m", "-Xmx512m", "app.jar"]
