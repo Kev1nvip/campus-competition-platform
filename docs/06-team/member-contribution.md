@@ -12,8 +12,8 @@
 | 成员 | GitHub账号 | 角色 | 主要负责 |
 |------|-----------|------|----------|
 | 负责人 | @Kev1nvip | 项目负责人 / 后端核心 | 后端核心模块、AI、并发控制、环境搭建 |
-| 队友A | @队友A账号 | 前端开发 | 学生端页面、竞赛相关前端 |
-| 队友B | @队友B账号 | 前端开发 | 老师端、管理员端页面 |
+| 队友A | @xsk10086 | 前端开发 | 学生端页面、竞赛相关前端 |
+| 队友B | @77311377 | 前端开发 | 老师端、管理员端页面 |
 | 队友C | @xm-csj | 后端开发 | 后端非核心模块、接口文档 |
 
 ---
@@ -24,15 +24,16 @@
 
 **后端核心模块**
 
-| 模块 | 具体内容 | 对应分支 |
+| 模块 | 具体内容 | 对应文件 |
 |------|----------|----------|
-| 项目基础搭建 | SpringBoot项目初始化、分层结构、统一返回体、全局异常处理 | feature/project-init |
-| 认证模块 | 注册、登录、JWT生成与验证、Spring Security配置 | feature/auth |
-| 竞赛模块 | 竞赛发布、编辑、状态管理、列表查询接口 | feature/competition-api |
-| 报名模块 | 个人赛报名、团队赛报名核心流程接口 | feature/signup-api |
-| 并发控制 | Redis计数器、乐观锁、名额控制、带队数量控制 | feature/concurrent |
-| AI推荐模块 | LangChain4j集成、PGVector配置、RAG链路、推荐接口 | feature/ai-rag |
-| 环境搭建 | docker-compose配置、Dockerfile编写、本地环境文档 | feature/docker |
+| 项目基础搭建 | SpringBoot项目初始化、分层结构、统一返回体、全局异常处理 | `common/result/Result.java` `common/result/PageVO.java` `common/exception/BusinessException.java` `common/exception/GlobalExceptionHandler.java` `common/constant/ErrorCode.java` `BackendApplication.java` |
+| 认证模块 | 注册、登录、JWT生成与验证、Spring Security配置 | `controller/AuthController.java` `service/AuthService.java` `service/impl/AuthServiceImpl.java` `common/security/JwtAuthenticationFilter.java` `common/security/SecurityUser.java` `common/security/UserDetailsServiceImpl.java` `config/SecurityConfig.java` `config/JwtProperties.java` `util/JwtUtil.java` `util/SecurityUtil.java` `dto/LoginDTO.java` `dto/RegisterDTO.java` `vo/LoginVO.java` `entity/SysUser.java` |
+| 竞赛模块 | 竞赛发布、编辑、状态管理、列表查询接口 | `controller/CompetitionController.java` `service/CompetitionService.java` `service/impl/CompetitionServiceImpl.java` `entity/Competition.java` `repository/CompetitionRepository.java` `dto/CompetitionSaveDTO.java` `vo/CompetitionListVO.java` `task/CompetitionStatusTask.java` |
+| 报名模块 | 个人赛报名、团队赛报名核心流程接口 | `controller/SignupController.java` `service/SignupService.java` `service/impl/SignupServiceImpl.java` `entity/IndividualSignup.java` `entity/TeamSignup.java` `repository/IndividualSignupRepository.java` `repository/TeamSignupRepository.java` `dto/IndividualSignupDTO.java` `dto/SignupSubmitDTO.java` |
+| 并发控制 | Redis计数器、乐观锁、名额控制、带队数量控制 | `service/RedisService.java` `config/RedisConfig.java` `common/constant/LuaScripts.java` `task/RedisSyncTask.java` |
+| AI推荐模块 | LangChain4j集成、PGVector配置、RAG链路、推荐接口 | `controller/AiController.java` `service/AiService.java` `service/AiAssistant.java` `service/impl/AiServiceImpl.java` `service/impl/KnowledgeBaseServiceImpl.java` `config/AiConfig.java` `entity/RagDocument.java` `dto/AiRecommendRequest.java` `types/ai.ts` |
+| 消息队列 | RabbitMQ配置、异步通知消息投递与消费 | `config/RabbitMqConfig.java` `dto/NotificationMessage.java` `task/NotificationListener.java` |
+| 环境搭建 | docker-compose配置、Dockerfile编写 | `docker-compose.yml` `backend/Dockerfile` `frontend/Dockerfile` `docker/postgres/init.sql` |
 
 **工作量估算：约 55 小时**
 
@@ -42,16 +43,16 @@
 
 **学生端全部页面 + 竞赛浏览**
 
-| 模块 | 具体内容 | 对应分支 |
+| 模块 | 具体内容 | 对应文件 |
 |------|----------|----------|
-| 前端基础搭建 | Vue3项目初始化、路由配置、Axios封装、Pinia配置 | feature/frontend-init |
-| 登录注册页面 | 登录表单、注册表单、表单校验、Token存储 | feature/login-page |
-| 竞赛列表页面 | 竞赛列表、筛选、搜索、分页 | feature/competition-list |
-| 竞赛详情页面 | 竞赛详情展示、报名入口 | feature/competition-detail |
-| 学生报名页面 | 个人赛报名表单、选择老师、提交申请 | feature/student-signup |
-| 组队页面 | 创建队伍、邀请队友、查看队伍状态 | feature/team-page |
-| 学生个人中心 | 个人信息、参赛记录、获奖记录、上传证书 | feature/student-profile |
-| AI推荐页面 | 输入方向、展示推荐结果、来源引用 | feature/ai-page |
+| 前端基础搭建 | Vue3项目初始化、路由配置、Axios封装、Pinia配置 | `main.ts` `utils/request.ts` `store/index.ts` `router/index.ts` `router/student.ts` `env.d.ts` `App.vue` |
+| 登录注册页面 | 登录表单、注册表单、表单校验、Token存储 | `views/Login.vue` `views/Register.vue` `api/auth.ts` `types/auth.ts` |
+| 竞赛列表页面 | 竞赛列表、筛选、搜索、分页 | `views/CompetitionList.vue` `views/Competitions.vue` `api/competition.ts` `types/competition.ts` |
+| 竞赛详情页面 | 竞赛详情展示、报名入口 | `views/CompetitionDetail.vue` |
+| 学生报名页面 | 个人赛报名表单、选择老师、提交申请 | `views/StudentSignup.vue` `views/TeacherSelect.vue` `api/signup.ts` `types/signup.ts` |
+| 组队页面 | 创建队伍、邀请队友、查看队伍状态、团队大厅 | `views/TeamPage.vue` `views/TeamDetail.vue` `views/TeamHall.vue` `views/MyTeams.vue` `views/Teams.vue` `api/team.ts` `types/team.ts` |
+| 学生个人中心 | 个人信息、参赛记录、获奖记录 | `views/StudentProfile.vue` `views/student/Dashboard.vue` `api/user.ts` `types/profile.ts` |
+| AI推荐页面 | 输入方向、展示推荐结果、来源引用 | `views/AiRecommend.vue` `api/ai.ts` |
 
 **工作量估算：约 50 小时**
 
@@ -61,16 +62,18 @@
 
 **老师端 + 管理员端全部页面**
 
-| 模块 | 具体内容 | 对应分支 |
+| 模块 | 具体内容 | 对应文件 |
 |------|----------|----------|
-| 整体布局组件 | 侧边栏、顶部导航、面包屑、权限路由守卫 | feature/layout |
-| 通知消息组件 | 消息中心页面、未读红点、标记已读 | feature/notification-page |
-| 老师招募帖页面 | 发布招募帖、查看申请列表、审核申请 | feature/teacher-recruitment |
-| 老师审核页面 | 待审核列表、审核操作、审核历史 | feature/teacher-audit |
-| 老师个人中心 | 个人信息、带队历史、带队成绩展示 | feature/teacher-profile |
-| 管理员竞赛管理 | 发布竞赛、编辑竞赛、竞赛列表管理 | feature/admin-competition |
-| 管理员审核页面 | 报名审核列表、审核操作、驳回填写原因 | feature/admin-audit |
-| 管理员数据统计 | 用户统计、竞赛统计、获奖统计图表 | feature/admin-statistics |
+| 整体布局组件 | 学生端/管理员端侧边栏、顶部导航、权限路由守卫 | `components/student-layout/Layout.vue` `components/admin-layout/Layout.vue` `router/admin.ts` `router/teacher.ts` `store/userAdmin.ts` `store/userTeacher.ts` |
+| 通知消息组件 | 消息铃铛、未读红点、通知下拉面板 | `components/NotificationBell.vue` |
+| 老师发布页面 | 发布竞赛、查看申请列表、审核申请 | `views/teacher/PublishComp.vue` `api/teacher.ts` |
+| 老师审核页面 | 待审核列表、审核操作 | `views/teacher/ApplyList.vue` `views/teacher/TeamManage.vue` |
+| 老师获奖录入 | 获奖记录提交、证书上传 | `views/teacher/AwardInput.vue` `api/award.ts` `types/award.ts` |
+| 老师个人中心 | 个人信息、带队历史 | `views/teacher/Profile.vue` |
+| 管理员竞赛管理 | 发布竞赛、编辑竞赛、竞赛列表管理 | `views/admin/CompManage.vue` `api/admin.ts` |
+| 管理员审核页面 | 报名审核列表（个人赛+团队赛）、驳回填写原因 | `views/admin/SignupAudit.vue` `views/admin/AwardAudit.vue` |
+| 管理员数据统计 | 用户统计、竞赛统计、获奖统计图表 | `views/admin/StatData.vue` `views/admin/111.vue` |
+| 管理员用户管理 | 用户列表、禁用/启用账号 | `views/admin/UserManage.vue` `views/admin/DeptManage.vue` |
 
 **工作量估算：约 50 小时**
 
@@ -80,16 +83,16 @@
 
 **后端非核心模块 + 接口文档**
 
-| 模块 | 具体内容 | 对应分支 |
+| 模块 | 具体内容 | 对应文件 |
 |------|----------|----------|
-| 用户模块 | 个人信息查询、更新、老师主页信息接口 | feature/user-api |
-| 招募帖模块 | 招募帖发布、关闭、申请加入、审核申请接口 | feature/recruitment-api |
-| 组队模块 | 创建队伍、邀请队友、处理邀请、退出队伍接口 | feature/team-api |
-| 审核模块 | 管理员审核报名、驳回、退回接口 | feature/audit-api |
-| 获奖模块 | 提交获奖记录、管理员审核获奖、查询获奖列表接口 | feature/award-api |
-| 通知模块 | 消息通知查询、标记已读、未读数量接口 | feature/notification-api |
-| 数据统计模块 | 用户统计、竞赛统计、获奖统计接口 | feature/statistics-api |
-| 接口文档 | Knife4j注解完善、接口文档维护、API文档markdown更新 | feature/api-docs |
+| 用户模块 | 个人信息查询、更新、老师主页信息、用户禁用启用 | `controller/UserController.java` `service/UserService.java` `service/impl/UserServiceImpl.java` `entity/SysUser.java` `repository/SysUserRepository.java` `dto/UserUpdateDTO.java` `vo/UserInfoVO.java` `vo/TeacherProfileVO.java` |
+| 招募帖模块 | 招募帖发布、关闭、申请加入、审核申请 | `controller/RecruitmentController.java` `service/RecruitmentService.java` `service/impl/RecruitmentServiceImpl.java` `entity/TeacherRecruitment.java` `entity/TeamRecruitment.java` `entity/ApplyRecord.java` `repository/TeacherRecruitmentRepository.java` `repository/TeamRecruitmentRepository.java` `repository/ApplyRecordRepository.java` `dto/CreateTeacherRecruitmentDTO.java` `dto/ApplyRecruitmentDTO.java` `dto/AuditApplyDTO.java` |
+| 组队模块 | 创建队伍、邀请队友、处理邀请、退出队伍 | `controller/TeamController.java` `service/TeamService.java` `service/impl/TeamServiceImpl.java` `entity/Team.java` `entity/TeamMember.java` `repository/TeamRepository.java` `repository/TeamMemberRepository.java` `dto/CreateTeamDTO.java` |
+| 审核模块 | 管理员审核报名（个人赛+团队赛）、驳回、审核记录 | `controller/AuditController.java` `service/AuditService.java` `service/impl/AuditServiceImpl.java` `entity/SignupAudit.java` `repository/SignupAuditRepository.java` `dto/SignupAuditDTO.java` |
+| 获奖模块 | 提交获奖记录、管理员审核获奖、查询获奖列表 | `controller/AwardController.java` `service/AwardService.java` `service/impl/AwardServiceImpl.java` `entity/AwardRecord.java` `entity/AwardAudit.java` `repository/AwardRecordRepository.java` `repository/AwardAuditRepository.java` `dto/CreateAwardDTO.java` `dto/AwardAuditDTO.java` `vo/AwardVO.java` `config/WebMvcConfig.java` |
+| 通知模块 | 消息通知查询、标记已读、未读数量 | `controller/NotificationController.java` `service/NotificationService.java` `service/impl/NotificationServiceImpl.java` `entity/SysNotification.java` `repository/SysNotificationRepository.java` |
+| 数据统计模块 | 用户统计、竞赛统计、获奖统计 | `controller/StatisticsController.java` `service/StatisticsService.java` `service/impl/StatisticsServiceImpl.java` `vo/StatisticsVO.java` |
+| 接口文档 | Knife4j注解完善、接口文档配置 | `config/Knife4jConfig.java` `config/AsyncConfig.java` |
 
 **工作量估算：约 50 小时**
 

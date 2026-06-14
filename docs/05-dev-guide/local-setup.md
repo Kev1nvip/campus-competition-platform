@@ -283,61 +283,23 @@ git remote -v
 
 ## 八、启动中间件（Docker）
 
-### 查看 docker-compose.yml
-
-项目根目录已有 docker-compose.yml，内容如下：
-
-```yaml
-version: '3.8'
-
-services:
-  postgres:
-    image: postgres:16
-    container_name: competition-postgres
-    environment:
-      POSTGRES_DB: campus_competition
-      POSTGRES_USER: competition
-      POSTGRES_PASSWORD: competition123
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./docs/03-database/init.sql:/docker-entrypoint-initdb.d/init.sql
-    restart: unless-stopped
-
-  redis:
-    image: redis:7.2-alpine
-    container_name: competition-redis
-    ports:
-      - "6379:6379"
-    command: redis-server --requirepass redis123
-    restart: unless-stopped
-
-  rabbitmq:
-    image: rabbitmq:3.12-management
-    container_name: competition-rabbitmq
-    environment:
-      RABBITMQ_DEFAULT_USER: competition
-      RABBITMQ_DEFAULT_PASS: competition123
-    ports:
-      - "5672:5672"    # 应用连接端口
-      - "15672:15672"  # 管理界面端口
-    restart: unless-stopped
-
-volumes:
-  postgres_data:
-```
-
-### 启动命令
-
 ```bash
-# 在项目根目录执行
+# 复制环境变量文件
+cp .env.example .env
+# 编辑 .env，填写 SILICONFLOW_API_KEY
 
-# 首次启动（拉取镜像，需要等待3-5分钟）
+# 启动所有服务（首次需要拉取镜像，约3-5分钟）
 docker compose up -d
 
-# 查看启动状态（三个服务都是 running 即成功）
+# 查看启动状态
 docker compose ps
+
+# 所有服务状态应为 running：
+# competition-postgres   running
+# competition-redis      running
+# competition-rabbitmq   running
+# competition-backend    running
+# competition-nginx      running
 
 # 查看日志（如果启动失败时用）
 docker compose logs
@@ -541,6 +503,32 @@ Step4：启动前端
   npm run dev
 
 Step5：开始开发
+```
+
+```bash
+# 1. 克隆Fork的仓库
+git clone git@github.com:队友用户名/campus-competition-platform.git
+
+# 2. 复制后端配置文件
+cp backend/src/main/resources/application-dev.yml.example \
+   backend/src/main/resources/application-dev.yml
+
+# 3. 复制环境变量文件
+cp .env.example .env
+# 填写 SILICONFLOW_API_KEY（开发阶段可以先不填，AI功能后面再接）
+
+# 4. 启动中间件
+docker compose up postgres redis rabbitmq -d
+# 注意：只启动中间件，不启动backend和nginx
+# 因为开发阶段backend在本地IDE里跑
+
+# 5. 启动后端
+# VS Code Spring Boot Dashboard 点击运行
+
+# 6. 启动前端
+cd frontend
+npm install
+npm run dev
 ```
 
 ---

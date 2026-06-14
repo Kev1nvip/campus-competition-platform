@@ -3,8 +3,10 @@
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
     "types": ["vite/client"],
-
-    /* Linting */
+    "moduleResolution": "bundler", // 新增：Vite 专属现代模块解析
+    "paths": {
+      "@/*": ["./src/*"]
+    },
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,

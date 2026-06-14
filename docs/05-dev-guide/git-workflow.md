@@ -540,6 +540,12 @@ GitHub上查看贡献：
 ## 十二、每日开发命令参考
 
 ```bash
+# ==================== 第一次配置，后续跳过 ====================
+# 方法一：使用 HTTPS
+git remote add upstream https://github.com/Kev1nvip/campus-competition-platform
+
+git remote -v    # 查看配置结果
+
 # ==================== 每天开始工作 ====================
 git checkout dev
 git fetch upstream
