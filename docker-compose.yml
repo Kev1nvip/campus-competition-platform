@@ -116,10 +116,10 @@ services:
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
       # RabbitMQ
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-competition}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-competition123}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-competition}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-competition123}
       # JWT
       JWT_SECRET: ${JWT_SECRET:-campus-competition-jwt-secret-key-2026}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-7200}
