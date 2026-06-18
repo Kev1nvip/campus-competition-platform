@@ -365,6 +365,27 @@ public class TeamController {
         return Result.success();
     }
 
+    // ──────────────────────────────────────────────
+    // 老师带队管理：查看已确认带队的队伍列表
+    // ──────────────────────────────────────────────
+    @Operation(summary = "老师查看带队队伍列表")
+    @GetMapping("/teacher-team-list")
+    public Result<List<Map<String, Object>>> teacherTeamList() {
+        Long teacherId = SecurityUtil.getCurrentUserId();
+        List<Team> teams = teamRepository.findByTeacherId(teacherId);
+        List<Map<String, Object>> result = teams.stream().map(t -> {
+            Map<String, Object> item = buildTeamItem(t);
+            // 查询成员姓名
+            List<String> memberNames = teamMemberRepository.findByTeamId(t.getId()).stream()
+                    .map(m -> userRepository.findById(m.getStudentId())
+                            .map(u -> u.getRealName()).orElse("未知"))
+                    .collect(Collectors.toList());
+            item.put("memberNames", memberNames);
+            return item;
+        }).collect(Collectors.toList());
+        return Result.success(result);
+    }
+
     @Operation(summary = "老师查看待处理带队申请列表")
     @GetMapping("/team-guide/pending")
     public Result<List<Map<String, Object>>> pendingTeamGuides() {
