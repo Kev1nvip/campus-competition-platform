@@ -65,6 +65,21 @@ CREATE TRIGGER trg_sys_user_updated_at
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- =============================================
+-- 1b. 院系表 department
+-- =============================================
+CREATE TABLE IF NOT EXISTS department (
+    id          BIGSERIAL       PRIMARY KEY,
+    name        VARCHAR(64)     NOT NULL,
+    created_at  TIMESTAMPTZ     NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uk_department_name
+    ON department(name);
+
+INSERT INTO department (name) VALUES ('计算机学院'), ('数学与统计学院'), ('物理学院'), ('外国语学院'), ('经济学院')
+ON CONFLICT (name) DO NOTHING;
+
+-- =============================================
 -- 2. 竞赛表 competition
 -- =============================================
 CREATE TABLE IF NOT EXISTS competition (
