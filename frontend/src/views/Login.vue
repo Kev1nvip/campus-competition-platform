@@ -1,10 +1,10 @@
 <template>
   <div class="auth-page">
     <div class="auth-split">
-      <!-- 左侧品牌区 -->
-      <div class="auth-brand">
+      <!-- 左侧品牌区，点击回到首页 -->
+      <div class="auth-brand" @click="router.push('/')">
         <div class="brand-logo">◆</div>
-        <div class="brand-name">校园竞赛平台</div>
+        <div class="brand-name">校园学术竞赛管理平台</div>
         <div class="brand-desc">一站式校园学术竞赛管理系统</div>
       </div>
 
@@ -134,6 +134,7 @@ const handleLogin = async () => {
   justify-content: center;
   padding: 60px 48px;
   color: #fff;
+  cursor: pointer;
 }
 
 .brand-logo {

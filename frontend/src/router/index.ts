@@ -42,10 +42,13 @@ router.beforeEach((to, _from, next) => {
   const isLoggedIn = !!token && !!userInfo
 
   // 1. 已登录用户访问公开页（/ /login /register）→ 跳到对应工作台
+  //    但需要检查 Pinia Store 数据是否完整，避免因 persist 未恢复导致死循环
   if (isLoggedIn && PUBLIC_PATHS.includes(to.path)) {
-    if (role === 'ADMIN') return next('/admin/signup-audit')
-    if (role === 'TEACHER') return next('/teacher/competition')
-    return next('/student/dashboard')
+    if (role === 'ADMIN' && adminStore.id) return next('/admin/signup-audit')
+    if (role === 'TEACHER' && teacherStore.id) return next('/teacher/competition')
+    if (role === 'STUDENT') return next('/student/dashboard')
+    // 数据不一致时放行到登录页，让用户重新登录
+    return next()
   }
 
   // 2. 学生端 /student/* → 需要 STUDENT 角色
@@ -58,14 +61,23 @@ router.beforeEach((to, _from, next) => {
   // 3. 教师端 /teacher/* → 需要 TEACHER 角色 + teacherStore
   if (to.path.startsWith('/teacher')) {
     if (!isLoggedIn || role !== 'TEACHER') return next('/login')
-    if (!teacherStore.id) return next('/login')
+    if (!teacherStore.id) {
+      // 刷新页面后 persist 数据为空 → 引导重新登录
+      localStorage.removeItem('token')
+      localStorage.removeItem('userInfo')
+      return next('/login')
+    }
     return next()
   }
 
   // 4. 管理员端 /admin/* → 需要 ADMIN 角色 + adminStore
   if (to.path.startsWith('/admin')) {
     if (!isLoggedIn || role !== 'ADMIN') return next('/login')
-    if (!adminStore.id) return next('/login')
+    if (!adminStore.id) {
+      localStorage.removeItem('token')
+      localStorage.removeItem('userInfo')
+      return next('/login')
+    }
     return next()
   }
 
