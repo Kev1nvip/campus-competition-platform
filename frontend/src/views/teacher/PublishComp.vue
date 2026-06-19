@@ -76,29 +76,29 @@
         <el-button @click="resetForm" style="margin-left:8px;">重置</el-button>
       </el-form-item>
     </el-form>
+
+    <!-- 发布成功后显示文档管理 -->
+    <div v-if="createdCompId" class="form-wrap" style="margin-top:20px;">
+      <CompetitionDoc :competition-id="createdCompId" />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
+import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
+import CompetitionDoc from '@/components/CompetitionDoc.vue'
 
 const submitting = ref(false)
+const createdCompId = ref<number | null>(null)
 const form = reactive({
-  title: '',
-  type: 'INDIVIDUAL',
-  organizer: '',
-  signupStart: '',
-  signupEnd: '',
-  competitionStart: '',
-  competitionEnd: '',
-  hasQuota: false,
-  maxQuota: 100,
-  minTeamSize: 2,
-  maxTeamSize: 5,
-  maxTeachQuota: null as number | null,
-  description: '',
-  requirement: ''
+  title: '', type: 'INDIVIDUAL', organizer: '',
+  signupStart: '', signupEnd: '',
+  competitionStart: '', competitionEnd: '',
+  hasQuota: false, maxQuota: 100,
+  minTeamSize: 2, maxTeamSize: 5, maxTeachQuota: null as number | null,
+  description: '', requirement: ''
 })
 
 const handleSubmit = async () => {
@@ -113,17 +113,11 @@ const handleSubmit = async () => {
 
   submitting.value = true
   try {
-    // 构建提交数据，空字符串的时间字段不提交
     const data: Record<string, any> = {
-      title: form.title,
-      type: form.type,
-      organizer: form.organizer,
-      signupStart: form.signupStart,
-      signupEnd: form.signupEnd,
-      hasQuota: form.hasQuota,
-      maxQuota: form.hasQuota ? form.maxQuota : null,
-      description: form.description || null,
-      requirement: form.requirement || null,
+      title: form.title, type: form.type, organizer: form.organizer,
+      signupStart: form.signupStart, signupEnd: form.signupEnd,
+      hasQuota: form.hasQuota, maxQuota: form.hasQuota ? form.maxQuota : null,
+      description: form.description || null, requirement: form.requirement || null,
     }
     if (form.competitionStart) data.competitionStart = form.competitionStart
     if (form.competitionEnd) data.competitionEnd = form.competitionEnd
@@ -136,6 +130,7 @@ const handleSubmit = async () => {
     const res: any = await request({ url: '/v1/competitions', method: 'POST', data })
     if (res.code === 0) {
       ElMessage.success('发布成功')
+      createdCompId.value = res.data
       resetForm()
     } else {
       ElMessage.error(res.message || '发布失败')
