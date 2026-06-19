@@ -2,7 +2,7 @@
   <div class="auth-page">
     <div class="auth-card wide">
       <div class="auth-header">
-        <div class="brand">◆ 校园竞赛平台</div>
+        <div class="brand">◆ 校园学术竞赛管理平台</div>
         <h2>注册账号</h2>
       </div>
 
@@ -76,6 +76,7 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { register } from '@/api/auth'
 import type { RegisterRequest } from '@/types/auth'
 

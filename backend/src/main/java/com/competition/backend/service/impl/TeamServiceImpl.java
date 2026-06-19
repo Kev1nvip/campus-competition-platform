@@ -4,9 +4,11 @@ import com.competition.backend.common.constant.ErrorCode;
 import com.competition.backend.common.exception.BusinessException;
 import com.competition.backend.dto.CreateTeamDTO;
 import com.competition.backend.entity.ApplyRecord;
+import com.competition.backend.entity.Competition;
 import com.competition.backend.entity.Team;
 import com.competition.backend.entity.TeamMember;
 import com.competition.backend.repository.ApplyRecordRepository;
+import com.competition.backend.repository.CompetitionRepository;
 import com.competition.backend.repository.SysUserRepository;
 import com.competition.backend.repository.TeamMemberRepository;
 import com.competition.backend.repository.TeamRepository;
@@ -26,14 +28,24 @@ public class TeamServiceImpl implements TeamService {
     private final TeamMemberRepository teamMemberRepository;
     private final ApplyRecordRepository applyRecordRepository;
     private final SysUserRepository userRepository;
+    private final CompetitionRepository competitionRepository;
     private final NotificationService notificationService;
 
     // ────────────────────────────────────────────
     // 创建队伍
     // ────────────────────────────────────────────
-    @Override
+@Override
     @Transactional(rollbackFor = Exception.class)
     public void createTeam(Long userId, CreateTeamDTO dto) {
+
+        Competition comp = competitionRepository.findById(dto.getCompetitionId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPETITION_NOT_FOUND, "竞赛不存在"));
+        if (!"TEAM".equals(comp.getType())) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR, "该竞赛不是团队赛，不可创建队伍");
+        }
+        if (!"UPCOMING".equals(comp.getStatus()) && !"SIGNING".equals(comp.getStatus())) {
+            throw new BusinessException(ErrorCode.COMPETITION_NOT_SIGNING, "竞赛不在报名时间内，不可创建队伍");
+        }
 
         Team team = Team.builder()
                 .competitionId(dto.getCompetitionId())

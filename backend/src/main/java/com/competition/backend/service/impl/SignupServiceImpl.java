@@ -201,13 +201,19 @@ public class SignupServiceImpl implements SignupService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.SIGNUP_NOT_FOUND, "报名不存在"));
     }
 
-    @Override
+@Override
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> signUpTeam(Long teamId) {
         Team team = teamRepository.findById(teamId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TEAM_NOT_FOUND, "队伍不存在"));
         
         SecurityUtil.checkSelf(team.getLeaderId());
+
+        Competition comp = competitionRepository.findById(team.getCompetitionId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPETITION_NOT_FOUND, "竞赛不存在"));
+        if (!"UPCOMING".equals(comp.getStatus()) && !"SIGNING".equals(comp.getStatus())) {
+            throw new BusinessException(ErrorCode.COMPETITION_NOT_SIGNING, "竞赛不在报名时间内，不可创建报名");
+        }
 
         if (!Boolean.TRUE.equals(team.getTeacherConfirmed())) {
             throw new BusinessException(ErrorCode.TEAM_TEACHER_NOT_CONFIRMED, "指导老师尚未确认，不可报名");
@@ -241,12 +247,57 @@ public class SignupServiceImpl implements SignupService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.TEAM_NOT_FOUND, "队伍不存在"));
         SecurityUtil.checkSelf(team.getLeaderId());
 
-        Competition comp = competitionRepository.findById(signup.getCompetitionId())
+Competition comp = competitionRepository.findById(signup.getCompetitionId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPETITION_NOT_FOUND, "竞赛不存在"));
 
-        // 校验人数
+        if (!"SIGNING".equals(comp.getStatus())) {
+            throw new BusinessException(ErrorCode.COMPETITION_NOT_SIGNING, "竞赛报名已截止，不可提交报名");
+        }
+
+// 校验人数
         if (team.getMemberCount() < comp.getMinTeamSize()) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "队伍人数不足，要求至少" + comp.getMinTeamSize() + "人");
+        }
+
+        // 并发名额校验（与个人赛一致）
+        boolean teacherCountInced = false;
+        boolean compQuotaDeced = false;
+
+        try {
+            // 校验并增加老师带队数
+            if (comp.getMaxTeachQuota() != null) {
+                Long count = redisService.incrTeacherCount(comp.getId(), team.getTeacherId(), comp.getMaxTeachQuota());
+                if (count == -1) {
+                    throw new BusinessException(ErrorCode.TEACHER_QUOTA_FULL, "该老师带队名额已满");
+                }
+                teacherCountInced = true;
+            }
+
+            // 校验并扣减竞赛名额
+            if (Boolean.TRUE.equals(comp.getHasQuota())) {
+                Long remaining = redisService.decrCompetitionQuota(comp.getId(), 1);
+                if (remaining == -1) {
+                    redisService.initCompetitionQuota(comp.getId(), comp.getMaxQuota() - comp.getEnrolledCount());
+                    remaining = redisService.decrCompetitionQuota(comp.getId(), 1);
+                }
+                if (remaining == -2) {
+                    throw new BusinessException(ErrorCode.COMPETITION_QUOTA_FULL, "竞赛名额已满");
+                }
+                compQuotaDeced = true;
+            }
+
+            // 乐观锁：更新 enrolledCount
+            comp.setEnrolledCount(comp.getEnrolledCount() + 1);
+            competitionRepository.saveAndFlush(comp);
+
+        } catch (org.springframework.orm.ObjectOptimisticLockingFailureException e) {
+            if (teacherCountInced) redisService.decrTeacherCount(comp.getId(), team.getTeacherId());
+            if (compQuotaDeced) redisService.incrCompetitionQuota(comp.getId(), 1);
+            throw new BusinessException(ErrorCode.CONFLICT, "当前报名人数较多，请稍后重试");
+        } catch (Exception e) {
+            if (teacherCountInced) redisService.decrTeacherCount(comp.getId(), team.getTeacherId());
+            if (compQuotaDeced) redisService.incrCompetitionQuota(comp.getId(), 1);
+            throw e;
         }
 
         signup.setStatus("PENDING");

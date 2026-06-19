@@ -13,7 +13,7 @@ export const auditApply = (data: { id: number; status: number }) =>
   request({ url: '/v1/teacher/apply/audit', method: 'POST', data })
 
 export const getTeamList = () =>
-  request({ url: '/v1/teacher/team/list', method: 'GET' })
+  request({ url: '/v1/team/teacher-team-list', method: 'GET' })
 
 export const addAward = (data: any) =>
   request({ url: '/v1/teacher/award/add', method: 'POST', data })

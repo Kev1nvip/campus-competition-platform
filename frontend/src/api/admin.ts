@@ -19,9 +19,18 @@ export const toggleUserStatus = (id: number, status: 'ACTIVE' | 'DISABLED') =>
 export const getCompAllList = (params?: { page?: number; size?: number }) =>
   request({ url: '/v1/competitions', method: 'GET', params: { page: 1, size: 100, ...params } })
 
-// 院系管理 — 后端暂无，返回空
+// 院系管理
 export const getDeptList = () =>
-  Promise.resolve({ code: 0, message: 'success', data: [] })
+  request({ url: '/v1/department/list', method: 'GET' })
+
+export const addDept = (name: string) =>
+  request({ url: '/v1/department/add', method: 'POST', data: { name } })
+
+export const renameDept = (oldName: string, newName: string) =>
+  request({ url: `/v1/department/rename/${encodeURIComponent(oldName)}`, method: 'PUT', data: { name: newName } })
+
+export const deleteDept = (name: string) =>
+  request({ url: `/v1/department/${encodeURIComponent(name)}`, method: 'DELETE' })
 
 // 数据统计 — 实际后端路由: GET /api/v1/statistics/dashboard
 export const getStatData = () =>

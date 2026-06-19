@@ -8,6 +8,7 @@ import com.competition.backend.dto.ApplyRecruitmentDTO;
 import com.competition.backend.dto.AuditApplyDTO;
 import com.competition.backend.dto.CreateTeacherRecruitmentDTO;
 import com.competition.backend.entity.ApplyRecord;
+import com.competition.backend.entity.Competition;
 import com.competition.backend.entity.IndividualSignup;
 import com.competition.backend.entity.TeamRecruitment;
 import com.competition.backend.repository.ApplyRecordRepository;
@@ -163,7 +164,7 @@ public class RecruitmentController {
 
     // ─── 学生组队招募帖 ──────────────────────────
 
-    @Operation(summary = "发布学生组队招募帖（队长）")
+@Operation(summary = "发布学生组队招募帖（队长）")
     @PostMapping("/team")
     public Result<Void> createTeamRecruitment(@RequestBody TeamRecruitment dto) {
         Long leaderId = SecurityUtil.getCurrentUserId();
@@ -175,6 +176,11 @@ public class RecruitmentController {
                 throw new BusinessException(ErrorCode.TEAM_TEACHER_NOT_CONFIRMED, "指导老师尚未确认，不能发招募帖");
             }
         });
+        Competition comp = competitionRepository.findById(dto.getCompetitionId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPETITION_NOT_FOUND, "竞赛不存在"));
+        if (!"UPCOMING".equals(comp.getStatus()) && !"SIGNING".equals(comp.getStatus())) {
+            throw new BusinessException(ErrorCode.COMPETITION_NOT_SIGNING, "竞赛不在报名时间内，不可发布招募帖");
+        }
         TeamRecruitment recruitment = TeamRecruitment.builder()
                 .competitionId(dto.getCompetitionId())
                 .teamId(dto.getTeamId())

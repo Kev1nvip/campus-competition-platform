@@ -4,12 +4,8 @@ import com.competition.backend.common.constant.ErrorCode;
 import com.competition.backend.common.exception.BusinessException;
 import com.competition.backend.entity.Competition;
 import com.competition.backend.repository.CompetitionRepository;
-import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.DocumentSplitter;
-import dev.langchain4j.data.document.splitter.DocumentSplitters;
-import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -18,6 +14,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -28,7 +26,6 @@ public class KnowledgeBaseServiceImpl {
 
     private final CompetitionRepository competitionRepository;
     private final EmbeddingModel embeddingModel;
-    private final EmbeddingStore<TextSegment> embeddingStore;
     private final JdbcTemplate jdbcTemplate;
 
     @Qualifier("aiTaskExecutor")
@@ -36,7 +33,7 @@ public class KnowledgeBaseServiceImpl {
 
     private final AtomicBoolean refreshing = new AtomicBoolean(false);
 
-    @Value("${ai.vector.table:rag_document}")
+    @Value("${ai.vector.table:rag_embeddings}")
     private String vectorTableName;
 
     public void triggerAsyncRefresh() {
@@ -63,10 +60,29 @@ public class KnowledgeBaseServiceImpl {
     }
 
     private void refreshKnowledgeBaseInternal() {
-        List<Competition> competitions = competitionRepository.findAll();
         clearVectorTable();
 
-        DocumentSplitter splitter = DocumentSplitters.recursive(500, 50);
+        // 1) 从 rag_document 同步到 rag_embeddings（含无向量的文本，供关键词检索）
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                "SELECT content, embedding FROM rag_document WHERE content IS NOT NULL"
+        );
+        for (Map<String, Object> row : rows) {
+            UUID newId = UUID.randomUUID();
+            String content = (String) row.get("content");
+            Object embeddingObj = row.get("embedding");
+            if (embeddingObj != null) {
+                String sql = "INSERT INTO " + vectorTableName + " (embedding_id, text, embedding) VALUES (?, ?, ?::vector)";
+                jdbcTemplate.update(sql, newId, content, embeddingObj);
+            } else {
+                jdbcTemplate.update(
+                        "INSERT INTO " + vectorTableName + " (embedding_id, text) VALUES (?, ?)",
+                        newId, content);
+            }
+        }
+        log.info("Synced {} vectors from rag_document to {}", rows.size(), vectorTableName);
+
+        // 2) 竞赛基本信息（即使无向量也写入文本，供关键词检索）
+        List<Competition> competitions = competitionRepository.findAll();
         for (Competition comp : competitions) {
             String text = String.format(
                     "竞赛名称：%s。主办方：%s。参赛要求：%s。详情：%s",
@@ -74,18 +90,24 @@ public class KnowledgeBaseServiceImpl {
                     safe(comp.getOrganizer()),
                     safe(comp.getRequirement()),
                     safe(comp.getDescription())
-            );
+            ).trim();
+            if (text.isEmpty()) continue;
 
-            Document doc = Document.from(text);
-            
-            List<TextSegment> segments = splitter.split(doc);
-            if (segments.isEmpty()) {
-                continue;
+            UUID newId = UUID.randomUUID();
+            jdbcTemplate.update(
+                    "INSERT INTO " + vectorTableName + " (embedding_id, text) VALUES (?, ?)",
+                    newId, text);
+            try {
+                Embedding emb = embeddingModel.embed(text).content();
+                jdbcTemplate.update(
+                        "UPDATE " + vectorTableName + " SET embedding = ?::vector WHERE embedding_id = ?",
+                        arrayToPgVector(emb.vector()), newId);
+            } catch (Exception e) {
+                log.warn("Embedding failed for compId={}, text saved for keyword search. Check SILICONFLOW_API_KEY", comp.getId());
             }
-
-            log.info("Refreshing competition vector, title={}, segments={}", comp.getTitle(), segments.size());
-            embeddingStore.addAll(embeddingModel.embedAll(segments).content(), segments);
         }
+
+        log.info("Knowledge base refresh done: {} competitions processed", competitions.size());
     }
 
     private void clearVectorTable() {
@@ -97,5 +119,15 @@ public class KnowledgeBaseServiceImpl {
 
     private String safe(String value) {
         return value == null ? "" : value;
+    }
+
+    private String arrayToPgVector(float[] vec) {
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < vec.length; i++) {
+            if (i > 0) sb.append(",");
+            sb.append(vec[i]);
+        }
+        sb.append("]");
+        return sb.toString();
     }
 }

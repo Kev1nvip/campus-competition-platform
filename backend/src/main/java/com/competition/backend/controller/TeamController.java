@@ -5,6 +5,7 @@ import com.competition.backend.common.exception.BusinessException;
 import com.competition.backend.common.result.Result;
 import com.competition.backend.dto.CreateTeamDTO;
 import com.competition.backend.entity.ApplyRecord;
+import com.competition.backend.entity.Competition;
 import com.competition.backend.entity.SysUser;
 import com.competition.backend.entity.Team;
 import com.competition.backend.entity.TeamMember;
@@ -46,8 +47,14 @@ public class TeamController {
     @GetMapping("/hall")
     public Result<List<Map<String, Object>>> teamHall(
             @RequestParam(required = false) Long competitionId) {
+        Set<Long> activeCompIds = competitionRepository.findAll().stream()
+                .filter(c -> "UPCOMING".equals(c.getStatus()) || "SIGNING".equals(c.getStatus()))
+                .map(Competition::getId)
+                .collect(Collectors.toSet());
+
         List<Team> teams = teamRepository.findAll().stream()
                 .filter(t -> "FORMING".equals(t.getStatus()))
+                .filter(t -> activeCompIds.contains(t.getCompetitionId()))
                 .filter(t -> competitionId == null || t.getCompetitionId().equals(competitionId))
                 .collect(Collectors.toList());
 
@@ -363,6 +370,27 @@ public class TeamController {
             }
         }
         return Result.success();
+    }
+
+    // ──────────────────────────────────────────────
+    // 老师带队管理：查看已确认带队的队伍列表
+    // ──────────────────────────────────────────────
+    @Operation(summary = "老师查看带队队伍列表")
+    @GetMapping("/teacher-team-list")
+    public Result<List<Map<String, Object>>> teacherTeamList() {
+        Long teacherId = SecurityUtil.getCurrentUserId();
+        List<Team> teams = teamRepository.findByTeacherId(teacherId);
+        List<Map<String, Object>> result = teams.stream().map(t -> {
+            Map<String, Object> item = buildTeamItem(t);
+            // 查询成员姓名
+            List<String> memberNames = teamMemberRepository.findByTeamId(t.getId()).stream()
+                    .map(m -> userRepository.findById(m.getStudentId())
+                            .map(u -> u.getRealName()).orElse("未知"))
+                    .collect(Collectors.toList());
+            item.put("memberNames", memberNames);
+            return item;
+        }).collect(Collectors.toList());
+        return Result.success(result);
     }
 
     @Operation(summary = "老师查看待处理带队申请列表")

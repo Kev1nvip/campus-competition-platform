@@ -10,6 +10,8 @@ import java.util.List;
 public interface TeamRepository extends JpaRepository<Team, Long> {
     // 查询某学生作为队长的队伍
     List<Team> findByLeaderId(Long leaderId);
+    // 查询老师带队的队伍
+    List<Team> findByTeacherId(Long teacherId);
     // 查询某竞赛下的所有队伍（分页）
     Page<Team> findByCompetitionId(Long competitionId, Pageable pageable);
 }

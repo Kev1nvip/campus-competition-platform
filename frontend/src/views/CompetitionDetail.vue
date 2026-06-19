@@ -60,7 +60,7 @@
         <p class="desc-text">{{ detail.requirement }}</p>
       </div>
 
-      <!-- 报名按钮 -->
+<!-- 报名按钮 -->
       <div class="action-area">
         <el-button
           v-if="detail.status === 'SIGNING'"
@@ -72,6 +72,12 @@
         </el-button>
         <span v-else class="signup-closed">{{ statusMap[detail.status] }}，暂不可报名</span>
       </div>
+
+      <!-- 相关文档 -->
+      <el-divider v-if="detail.id" />
+      <div v-if="detail.id" class="section">
+        <CompetitionDoc :competition-id="detail.id" />
+      </div>
     </div>
   </div>
 </template>
@@ -82,6 +88,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { competitionApi } from '@/api/competition'
 import type { CompetitionDetailVO } from '@/types/competition'
 import { statusMap, typeMap } from '@/types/competition'
+import CompetitionDoc from '@/components/CompetitionDoc.vue'
 
 
 const route = useRoute()

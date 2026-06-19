@@ -76,7 +76,7 @@
             <el-option
               v-for="c in competitions"
               :key="c.id"
-              :label="c.title"
+              :label="c.title + '（' + statusMap[c.status] + '）'"
               :value="c.id"
             />
           </el-select>
@@ -96,6 +96,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 import { competitionApi } from '@/api/competition'
+import { statusMap } from '@/types/competition'
 
 const router = useRouter()
 const teams = ref<any[]>([])
@@ -139,7 +140,11 @@ const fetchCompetitions = async () => {
   compLoading.value = true
   try {
     const res = await competitionApi.getList({ page: 1, size: 200, type: 'TEAM' })
-    if (res.code === 0) competitions.value = res.data.list
+    if (res.code === 0) {
+      competitions.value = (res.data.list ?? []).filter(
+        (c: any) => c.status === 'UPCOMING' || c.status === 'SIGNING'
+      )
+    }
   } finally {
     compLoading.value = false
   }

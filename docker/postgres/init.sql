@@ -65,6 +65,21 @@ CREATE TRIGGER trg_sys_user_updated_at
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- =============================================
+-- 1b. 院系表 department
+-- =============================================
+CREATE TABLE IF NOT EXISTS department (
+    id          BIGSERIAL       PRIMARY KEY,
+    name        VARCHAR(64)     NOT NULL,
+    created_at  TIMESTAMPTZ     NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uk_department_name
+    ON department(name);
+
+INSERT INTO department (name) VALUES ('计算机学院'), ('数学与统计学院'), ('物理学院'), ('外国语学院'), ('经济学院')
+ON CONFLICT (name) DO NOTHING;
+
+-- =============================================
 -- 2. 竞赛表 competition
 -- =============================================
 CREATE TABLE IF NOT EXISTS competition (
@@ -563,7 +578,23 @@ CREATE INDEX IF NOT EXISTS idx_notification_created_at
 -- 已读状态更新通过 UPDATE SET is_read=TRUE 直接操作，不需要触发器
 
 -- =============================================
--- 14. AI知识库文档表 rag_document
+-- 14. 竞赛文档表 competition_document
+-- =============================================
+CREATE TABLE IF NOT EXISTS competition_document (
+    id              BIGSERIAL       PRIMARY KEY,
+    competition_id  BIGINT          NOT NULL REFERENCES competition(id),
+    doc_type        VARCHAR(32)     NOT NULL,
+    file_name       VARCHAR(256)    NOT NULL,
+    file_path       VARCHAR(512)    NOT NULL,
+    file_size       BIGINT          NOT NULL,
+    created_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_comp_doc_competition
+    ON competition_document(competition_id);
+
+-- =============================================
+-- 15. AI知识库文档表 rag_document
 -- =============================================
 CREATE TABLE IF NOT EXISTS rag_document (
     id               BIGSERIAL       PRIMARY KEY,
@@ -573,6 +604,7 @@ CREATE TABLE IF NOT EXISTS rag_document (
     content          TEXT            NOT NULL,
     embedding        vector(1024)    DEFAULT NULL,
     category         VARCHAR(32)     DEFAULT NULL,
+    document_id      BIGINT          DEFAULT NULL REFERENCES competition_document(id),
     created_at       TIMESTAMPTZ     NOT NULL    DEFAULT NOW()
 );
 
@@ -583,17 +615,35 @@ COMMENT ON COLUMN rag_document.chunk_index      IS '分块序号，同一文档�
 COMMENT ON COLUMN rag_document.content          IS '分块后的原始文本内容';
 COMMENT ON COLUMN rag_document.embedding        IS '向量表示，维度1024，对应BGE-M3模型';
 COMMENT ON COLUMN rag_document.category         IS '竞赛类别标签，如算法/数学/创新';
+COMMENT ON COLUMN rag_document.document_id      IS '关联competition_document.id，上传文档的分块有值';
 
 CREATE INDEX IF NOT EXISTS idx_rag_document_name
     ON rag_document(doc_name);
 CREATE INDEX IF NOT EXISTS idx_rag_document_category
     ON rag_document(category);
+CREATE INDEX IF NOT EXISTS idx_rag_document_document_id
+    ON rag_document(document_id);
 
 -- HNSW向量索引（在数据插入后创建效率更高）
 -- 首次数据入库完成后执行：
 -- CREATE INDEX idx_rag_embedding ON rag_document
 --     USING hnsw (embedding vector_cosine_ops)
 --     WITH (m = 16, ef_construction = 64);
+
+-- =============================================
+-- 16. 向量检索表 rag_embeddings（供 LangChain4j RAG 检索器使用）
+-- =============================================
+CREATE TABLE IF NOT EXISTS rag_embeddings (
+    id          UUID            PRIMARY KEY,
+    text        TEXT            NOT NULL,
+    metadata    JSONB,
+    embedding   vector(1024)
+);
+
+CREATE INDEX IF NOT EXISTS idx_rag_embeddings_embedding
+    ON rag_embeddings
+    USING hnsw (embedding vector_cosine_ops)
+    WITH (m = 16, ef_construction = 64);
 
 -- =============================================
 -- 初始化数据

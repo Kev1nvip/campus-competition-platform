@@ -37,16 +37,17 @@ public class AiConfig {
     @Value("${spring.datasource.password}")
     private String dbPassword;
 
-    @Value("${ai.vector.table:rag_document}")
+@Value("${ai.vector.table:rag_embeddings}")
     private String vectorTable;
 
-    @Bean
+@Bean
     public ChatLanguageModel chatLanguageModel() {
         return OpenAiChatModel.builder()
                 .apiKey(apiKey)
                 .baseUrl(baseUrl)
                 .modelName(chatModelName)
-                .timeout(Duration.ofSeconds(60))
+                .timeout(Duration.ofSeconds(180))
+                .maxRetries(0)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -76,7 +77,7 @@ public class AiConfig {
         int port = Integer.parseInt(hostPort.split(":")[1]);
         String database = cleanUrl.split("/")[1];
 
-        return PgVectorEmbeddingStore.builder()
+return PgVectorEmbeddingStore.builder()
                 .host(host)
                 .port(port)
                 .database(database)
@@ -84,6 +85,7 @@ public class AiConfig {
                 .password(dbPassword)
                 .table(vectorTable)
                 .dimension(1024)
+                .createTable(false)
                 .build();
     }
 }

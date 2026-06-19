@@ -1,5 +1,6 @@
 package com.competition.backend.entity;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -100,8 +101,12 @@ public class Competition {
     /**
      * 发布人ID，关联sys_user.id
      */
-    @Column(name = "created_by", nullable = false)
+@Column(name = "created_by", nullable = false)
     private Long createdBy;
+
+    @Transient
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private String createdByName;
 
     /**
      * 乐观锁版本号
