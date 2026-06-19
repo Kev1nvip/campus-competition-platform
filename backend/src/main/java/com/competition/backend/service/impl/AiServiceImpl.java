@@ -49,8 +49,8 @@ public class AiServiceImpl implements AiService {
         EmbeddingStoreContentRetriever vectorRetriever = EmbeddingStoreContentRetriever.builder()
                 .embeddingStore(embeddingStore)
                 .embeddingModel(embeddingModel)
-                .maxResults(3)
-                .minScore(0.6)
+                .maxResults(10)
+                .minScore(0.3)
                 .build();
         this.retriever = new HybridContentRetriever(vectorRetriever, jdbcTemplate);
     }

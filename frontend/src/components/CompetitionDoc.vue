@@ -2,7 +2,7 @@
   <div class="doc-section">
     <div class="doc-header">
       <span class="doc-title">竞赛文档</span>
-      <el-button size="small" type="primary" :loading="uploading" @click="triggerUpload">
+      <el-button v-if="canManage" size="small" type="primary" :loading="uploading" @click="triggerUpload">
         上传文档
       </el-button>
     </div>
@@ -42,7 +42,7 @@
         </div>
         <div class="doc-actions">
           <el-button size="small" text @click="downloadDoc(item)">下载</el-button>
-          <el-button size="small" text type="danger" :loading="item._deleting" @click="deleteDoc(item)">删除</el-button>
+          <el-button v-if="canManage" size="small" text type="danger" :loading="item._deleting" @click="deleteDoc(item)">删除</el-button>
         </div>
       </div>
     </div>
@@ -50,11 +50,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
 
 const props = defineProps<{ competitionId: number }>()
+
+const canManage = computed(() => {
+  try {
+    const info = JSON.parse(localStorage.getItem('userInfo') || '{}')
+    return info.role === 'ADMIN' || info.role === 'TEACHER'
+  } catch { return false }
+})
 
 const list = ref<any[]>([])
 const isLoading = ref(false)

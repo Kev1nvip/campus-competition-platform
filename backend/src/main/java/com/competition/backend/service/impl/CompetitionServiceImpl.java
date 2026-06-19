@@ -119,7 +119,7 @@ public class CompetitionServiceImpl implements CompetitionService {
         return PageVO.of(competitionPage, this::convertToListVO);
     }
 
-    @Override
+@Override
     public Competition getCompetitionDetail(Long id) {
         Competition competition = competitionRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "竞赛不存在"));
@@ -127,6 +127,8 @@ public class CompetitionServiceImpl implements CompetitionService {
         if ("OFFLINE".equals(competition.getStatus()) && !SecurityUtil.isAdmin() && !SecurityUtil.getCurrentUserId().equals(competition.getCreatedBy())) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "竞赛已下架");
         }
+        userRepository.findById(competition.getCreatedBy())
+                .ifPresent(u -> competition.setCreatedByName(u.getRealName()));
         return competition;
     }
 
