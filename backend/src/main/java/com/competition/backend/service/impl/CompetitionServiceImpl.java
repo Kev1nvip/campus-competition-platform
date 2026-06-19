@@ -5,8 +5,12 @@ import com.competition.backend.common.exception.BusinessException;
 import com.competition.backend.common.result.PageVO;
 import com.competition.backend.dto.CompetitionSaveDTO;
 import com.competition.backend.entity.Competition;
+import com.competition.backend.entity.TeacherRecruitment;
+import com.competition.backend.entity.TeamRecruitment;
 import com.competition.backend.repository.CompetitionRepository;
 import com.competition.backend.repository.SysUserRepository;
+import com.competition.backend.repository.TeacherRecruitmentRepository;
+import com.competition.backend.repository.TeamRecruitmentRepository;
 import com.competition.backend.service.CompetitionService;
 import com.competition.backend.service.RedisService;
 import com.competition.backend.util.SecurityUtil;
@@ -31,6 +35,8 @@ public class CompetitionServiceImpl implements CompetitionService {
     private final CompetitionRepository competitionRepository;
     private final SysUserRepository userRepository;
     private final RedisService redisService;
+    private final TeamRecruitmentRepository teamRecruitmentRepository;
+    private final TeacherRecruitmentRepository teacherRecruitmentRepository;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -155,13 +161,15 @@ public class CompetitionServiceImpl implements CompetitionService {
         competitionRepository.save(competition);
     }
 
-    @Override
+@Override
     @Transactional(rollbackFor = Exception.class)
     public void changeStatus(Long id, String action) {
         Competition competition = competitionRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "竞赛不存在"));
         
         SecurityUtil.checkSelfOrAdmin(competition.getCreatedBy());
+
+        String oldStatus = competition.getStatus();
 
         if ("OFFLINE".equals(action)) {
             competition.setStatus("OFFLINE");
@@ -170,6 +178,30 @@ public class CompetitionServiceImpl implements CompetitionService {
         }
         
         competitionRepository.save(competition);
+
+        // 离开 SIGNING 时自动关闭该竞赛的所有招募帖
+        if ("SIGNING".equals(oldStatus) && !"SIGNING".equals(competition.getStatus())) {
+            closeRecruitmentsForCompetition(id);
+        }
+    }
+
+    private void closeRecruitmentsForCompetition(Long competitionId) {
+        // 关闭老师招募帖
+        List<TeacherRecruitment> teacherRecs = teacherRecruitmentRepository.findByCompetitionId(competitionId);
+        for (TeacherRecruitment r : teacherRecs) {
+            if ("OPEN".equals(r.getStatus())) {
+                r.setStatus("CLOSED");
+                teacherRecruitmentRepository.save(r);
+            }
+        }
+        // 关闭学生组队招募帖
+        List<TeamRecruitment> teamRecs = teamRecruitmentRepository.findByCompetitionId(competitionId);
+        for (TeamRecruitment r : teamRecs) {
+            if ("OPEN".equals(r.getStatus())) {
+                r.setStatus("CLOSED");
+                teamRecruitmentRepository.save(r);
+            }
+        }
     }
 
     private void validateCompetition(CompetitionSaveDTO dto) {

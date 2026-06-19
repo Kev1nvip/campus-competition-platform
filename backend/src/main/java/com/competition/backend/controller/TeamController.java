@@ -5,6 +5,7 @@ import com.competition.backend.common.exception.BusinessException;
 import com.competition.backend.common.result.Result;
 import com.competition.backend.dto.CreateTeamDTO;
 import com.competition.backend.entity.ApplyRecord;
+import com.competition.backend.entity.Competition;
 import com.competition.backend.entity.SysUser;
 import com.competition.backend.entity.Team;
 import com.competition.backend.entity.TeamMember;
@@ -46,8 +47,14 @@ public class TeamController {
     @GetMapping("/hall")
     public Result<List<Map<String, Object>>> teamHall(
             @RequestParam(required = false) Long competitionId) {
+        Set<Long> activeCompIds = competitionRepository.findAll().stream()
+                .filter(c -> "UPCOMING".equals(c.getStatus()) || "SIGNING".equals(c.getStatus()))
+                .map(Competition::getId)
+                .collect(Collectors.toSet());
+
         List<Team> teams = teamRepository.findAll().stream()
                 .filter(t -> "FORMING".equals(t.getStatus()))
+                .filter(t -> activeCompIds.contains(t.getCompetitionId()))
                 .filter(t -> competitionId == null || t.getCompetitionId().equals(competitionId))
                 .collect(Collectors.toList());
 

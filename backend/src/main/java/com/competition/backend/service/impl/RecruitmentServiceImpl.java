@@ -38,13 +38,18 @@ public class RecruitmentServiceImpl implements RecruitmentService {
                 .orElseThrow(() -> new BusinessException(
                         ErrorCode.COMPETITION_NOT_FOUND, "竞赛不存在"));
 
-        // 2. 校验招募人数
+// 2. 校验竞赛状态
+        if (!"UPCOMING".equals(competition.getStatus()) && !"SIGNING".equals(competition.getStatus())) {
+            throw new BusinessException(ErrorCode.COMPETITION_NOT_SIGNING, "竞赛不在报名时间内，不可发布招募帖");
+        }
+
+        // 3. 校验招募人数
         if (dto.getRecruitCount() == null || dto.getRecruitCount() <= 0) {
             throw new BusinessException(
                     ErrorCode.PARAM_ERROR, "招募人数必须大于0");
         }
 
-        // 3. 创建招募帖
+        // 4. 创建招募帖
         TeacherRecruitment recruitment = TeacherRecruitment.builder()
                 .competitionId(competition.getId())
                 .teacherId(teacherId)

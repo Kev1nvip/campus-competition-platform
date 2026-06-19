@@ -201,13 +201,19 @@ public class SignupServiceImpl implements SignupService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.SIGNUP_NOT_FOUND, "报名不存在"));
     }
 
-    @Override
+@Override
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> signUpTeam(Long teamId) {
         Team team = teamRepository.findById(teamId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TEAM_NOT_FOUND, "队伍不存在"));
         
         SecurityUtil.checkSelf(team.getLeaderId());
+
+        Competition comp = competitionRepository.findById(team.getCompetitionId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPETITION_NOT_FOUND, "竞赛不存在"));
+        if (!"UPCOMING".equals(comp.getStatus()) && !"SIGNING".equals(comp.getStatus())) {
+            throw new BusinessException(ErrorCode.COMPETITION_NOT_SIGNING, "竞赛不在报名时间内，不可创建报名");
+        }
 
         if (!Boolean.TRUE.equals(team.getTeacherConfirmed())) {
             throw new BusinessException(ErrorCode.TEAM_TEACHER_NOT_CONFIRMED, "指导老师尚未确认，不可报名");
@@ -241,8 +247,12 @@ public class SignupServiceImpl implements SignupService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.TEAM_NOT_FOUND, "队伍不存在"));
         SecurityUtil.checkSelf(team.getLeaderId());
 
-        Competition comp = competitionRepository.findById(signup.getCompetitionId())
+Competition comp = competitionRepository.findById(signup.getCompetitionId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPETITION_NOT_FOUND, "竞赛不存在"));
+
+        if (!"SIGNING".equals(comp.getStatus())) {
+            throw new BusinessException(ErrorCode.COMPETITION_NOT_SIGNING, "竞赛报名已截止，不可提交报名");
+        }
 
         // 校验人数
         if (team.getMemberCount() < comp.getMinTeamSize()) {

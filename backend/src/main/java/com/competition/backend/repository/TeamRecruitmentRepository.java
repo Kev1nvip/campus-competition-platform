@@ -5,7 +5,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
+
 public interface TeamRecruitmentRepository extends JpaRepository<TeamRecruitment, Long> {
     Page<TeamRecruitment> findByCompetitionIdAndStatus(Long competitionId, String status, Pageable pageable);
+    List<TeamRecruitment> findByCompetitionId(Long competitionId);
     Page<TeamRecruitment> findByLeaderId(Long leaderId, Pageable pageable);
 }

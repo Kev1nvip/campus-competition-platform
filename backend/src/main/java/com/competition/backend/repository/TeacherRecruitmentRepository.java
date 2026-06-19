@@ -11,4 +11,6 @@ public interface TeacherRecruitmentRepository
     List<TeacherRecruitment> findByTeacherId(Long teacherId);
 
     List<TeacherRecruitment> findByStatus(String status);
+
+    List<TeacherRecruitment> findByCompetitionId(Long competitionId);
 }
