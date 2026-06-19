@@ -7,6 +7,7 @@ import com.competition.backend.dto.UserUpdateDTO;
 import com.competition.backend.entity.SysUser;
 import com.competition.backend.repository.SysUserRepository;
 import com.competition.backend.service.UserService;
+import com.competition.backend.util.SecurityUtil;
 import com.competition.backend.vo.TeacherProfileVO;
 import com.competition.backend.vo.UserInfoVO;
 import lombok.RequiredArgsConstructor;
@@ -186,6 +187,12 @@ public class UserServiceImpl implements UserService {
         }
         SysUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND, "用户不存在"));
+        
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        if (currentUserId.equals(userId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "不能禁用或启用自己");
+        }
+        
         user.setStatus(status);
         userRepository.save(user);
     }
