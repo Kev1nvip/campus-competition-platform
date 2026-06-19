@@ -40,6 +40,9 @@ public class TeamServiceImpl implements TeamService {
 
         Competition comp = competitionRepository.findById(dto.getCompetitionId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPETITION_NOT_FOUND, "竞赛不存在"));
+        if (!"TEAM".equals(comp.getType())) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR, "该竞赛不是团队赛，不可创建队伍");
+        }
         if (!"UPCOMING".equals(comp.getStatus()) && !"SIGNING".equals(comp.getStatus())) {
             throw new BusinessException(ErrorCode.COMPETITION_NOT_SIGNING, "竞赛不在报名时间内，不可创建队伍");
         }

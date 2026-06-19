@@ -254,9 +254,50 @@ Competition comp = competitionRepository.findById(signup.getCompetitionId())
             throw new BusinessException(ErrorCode.COMPETITION_NOT_SIGNING, "竞赛报名已截止，不可提交报名");
         }
 
-        // 校验人数
+// 校验人数
         if (team.getMemberCount() < comp.getMinTeamSize()) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "队伍人数不足，要求至少" + comp.getMinTeamSize() + "人");
+        }
+
+        // 并发名额校验（与个人赛一致）
+        boolean teacherCountInced = false;
+        boolean compQuotaDeced = false;
+
+        try {
+            // 校验并增加老师带队数
+            if (comp.getMaxTeachQuota() != null) {
+                Long count = redisService.incrTeacherCount(comp.getId(), team.getTeacherId(), comp.getMaxTeachQuota());
+                if (count == -1) {
+                    throw new BusinessException(ErrorCode.TEACHER_QUOTA_FULL, "该老师带队名额已满");
+                }
+                teacherCountInced = true;
+            }
+
+            // 校验并扣减竞赛名额
+            if (Boolean.TRUE.equals(comp.getHasQuota())) {
+                Long remaining = redisService.decrCompetitionQuota(comp.getId(), 1);
+                if (remaining == -1) {
+                    redisService.initCompetitionQuota(comp.getId(), comp.getMaxQuota() - comp.getEnrolledCount());
+                    remaining = redisService.decrCompetitionQuota(comp.getId(), 1);
+                }
+                if (remaining == -2) {
+                    throw new BusinessException(ErrorCode.COMPETITION_QUOTA_FULL, "竞赛名额已满");
+                }
+                compQuotaDeced = true;
+            }
+
+            // 乐观锁：更新 enrolledCount
+            comp.setEnrolledCount(comp.getEnrolledCount() + 1);
+            competitionRepository.saveAndFlush(comp);
+
+        } catch (org.springframework.orm.ObjectOptimisticLockingFailureException e) {
+            if (teacherCountInced) redisService.decrTeacherCount(comp.getId(), team.getTeacherId());
+            if (compQuotaDeced) redisService.incrCompetitionQuota(comp.getId(), 1);
+            throw new BusinessException(ErrorCode.CONFLICT, "当前报名人数较多，请稍后重试");
+        } catch (Exception e) {
+            if (teacherCountInced) redisService.decrTeacherCount(comp.getId(), team.getTeacherId());
+            if (compQuotaDeced) redisService.incrCompetitionQuota(comp.getId(), 1);
+            throw e;
         }
 
         signup.setStatus("PENDING");
