@@ -34,24 +34,25 @@
       <!-- 带队统计 -->
       <div class="card">
         <div class="card-title">带队统计</div>
-        <div v-if="awardsLoading" class="center-tip">加载中...</div>
+        <div v-if="statsLoading" class="center-tip">加载中...</div>
         <div v-else>
           <div class="stat-row">
             <span class="stat-label">历史带队竞赛</span>
-            <span class="stat-val">{{ awardHistory.length }} 场</span>
+            <span class="stat-val">{{ stats.totalCompetitions }} 场</span>
           </div>
           <div class="stat-row">
             <span class="stat-label">获奖记录（已确认）</span>
-            <span class="stat-val">{{ approvedAwards }} 条</span>
+            <span class="stat-val">{{ stats.approvedAwards }} 条</span>
           </div>
 
           <el-divider />
 
-          <div v-if="awardHistory.length === 0" class="center-tip">暂无获奖记录</div>
+          <div v-if="stats.awardList.length === 0" class="center-tip">暂无获奖记录</div>
           <div v-else class="award-list">
-            <div v-for="item in awardHistory" :key="item.id" class="award-row">
+            <div v-for="item in stats.awardList" :key="item.id" class="award-row">
               <div class="award-name">{{ item.awardName }}</div>
               <div class="award-meta">
+                <el-tag size="small">{{ item.competitionTitle || '-' }}</el-tag>
                 <el-tag size="small" :type="levelTag(item.awardLevel)">{{ levelText(item.awardLevel) }}</el-tag>
                 <span class="award-date">{{ item.awardDate }}</span>
               </div>
@@ -64,16 +65,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 
 const saving = ref(false)
-const awardsLoading = ref(false)
+const statsLoading = ref(false)
 const userInfo = ref<any>({ username: '' })
 const form = reactive({ realName: '', title: '', department: '', email: '', phone: '' })
-const awardHistory = ref<any[]>([])
-
-const approvedAwards = computed(() => awardHistory.value.filter((a: any) => a.status === 'APPROVED').length)
+const stats = ref({ totalCompetitions: 0, approvedAwards: 0, awardList: [] as any[] })
 
 const levelText = (l: string) => (({
   NATIONAL_FIRST: '国家一等奖', NATIONAL_SECOND: '国家二等奖', NATIONAL_THIRD: '国家三等奖',
@@ -96,14 +96,13 @@ const loadProfile = async () => {
   } catch { /* ignore */ }
 }
 
-const loadAwards = async () => {
-  awardsLoading.value = true
+const loadStats = async () => {
+  statsLoading.value = true
   try {
-    // 教师视角：查询提交人是自己的获奖记录（提交人即老师）
-    const res: any = await request({ url: '/v1/award/my', method: 'GET', params: { page: 0, size: 100 } })
-    if (res.code === 0) awardHistory.value = res.data?.content ?? res.data?.list ?? []
+    const res: any = await request({ url: '/v1/user/teacher-stats', method: 'GET' })
+    if (res.code === 0) stats.value = res.data ?? { totalCompetitions: 0, approvedAwards: 0, awardList: [] }
   } catch { /* ignore */ }
-  finally { awardsLoading.value = false }
+  finally { statsLoading.value = false }
 }
 
 const saveProfile = async () => {
@@ -119,7 +118,7 @@ const saveProfile = async () => {
   }
 }
 
-onMounted(() => { loadProfile(); loadAwards() })
+onMounted(() => { loadProfile(); loadStats() })
 </script>
 
 <style scoped>

@@ -8,7 +8,7 @@ import type { InternalAxiosRequestConfig, AxiosRequestConfig, AxiosResponse } fr
 
 const instance = axios.create({
   baseURL: '/api',
-  timeout: 10000,
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json'
   }

@@ -67,7 +67,7 @@ ai:
     embedding-model: BAAI/bge-m3
     chat-model: Qwen/Qwen3-8B
   vector:
-    table: ${AI_VECTOR_TABLE:rag_document}
+    table: ${AI_VECTOR_TABLE:rag_embeddings}
 
 # Knife4j接口文档
 knife4j:

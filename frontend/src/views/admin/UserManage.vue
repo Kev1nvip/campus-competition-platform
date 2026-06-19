@@ -28,12 +28,13 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="160">
+<el-table-column label="操作" width="160">
         <template #default="{ row }: { row: any }">
           <el-button
             size="small"
             :type="row.status === 'ACTIVE' ? 'danger' : 'success'"
             text
+            :disabled="row.id === currentUserId"
             @click="handleToggleStatus(row)"
           >
             {{ row.status === 'ACTIVE' ? '禁用' : '启用' }}
@@ -66,6 +67,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { getUserList, addUser, toggleUserStatus } from '@/api/admin'
 
 const list = ref<any[]>([])
@@ -73,6 +75,7 @@ const isLoading = ref(false)
 const keyword = ref('')
 const showAdd = ref(false)
 const addForm = reactive({ username: '', password: '', realName: '', role: 'STUDENT' })
+const currentUserId = Number(JSON.parse(localStorage.getItem('userInfo') || '{}').userId) || 0
 
 const loadData = async () => {
   isLoading.value = true
