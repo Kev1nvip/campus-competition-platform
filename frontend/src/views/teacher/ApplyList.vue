@@ -71,7 +71,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 
@@ -169,6 +169,14 @@ onMounted(() => {
   loadGuideList()
   loadAuditList()
 })
+
+// 监听全局事件：当在通知铃铛中操作后同步刷新列表
+const handleApplyEvent = () => {
+  loadGuideList()
+  loadAuditList()
+}
+onMounted(() => window.addEventListener('apply-handled', handleApplyEvent))
+onUnmounted(() => window.removeEventListener('apply-handled', handleApplyEvent))
 </script>
 
 <style scoped>

@@ -11,4 +11,6 @@ public interface TeamSignupRepository extends JpaRepository<TeamSignup, Long> {
     boolean existsByCompetitionIdAndTeamId(Long competitionId, Long teamId);
     Page<TeamSignup> findByCompetitionId(Long competitionId, Pageable pageable);
     Page<TeamSignup> findByStatusIn(List<String> statuses, Pageable pageable);
+    List<TeamSignup> findByTeacherIdAndStatus(Long teacherId, String status);
+    List<TeamSignup> findByTeacherIdAndCompetitionIdAndStatus(Long teacherId, Long competitionId, String status);
 }

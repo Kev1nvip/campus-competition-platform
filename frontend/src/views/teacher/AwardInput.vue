@@ -2,7 +2,8 @@
   <div>
     <div class="page-title">录入获奖</div>
 
-    <el-form :model="form" label-width="110px" class="form-wrap">
+    <el-form :model="form" label-width="120px" class="form-wrap">
+
       <el-form-item label="选择竞赛" required>
         <el-select
           v-model="form.competitionId"
@@ -10,32 +11,55 @@
           style="width:100%;"
           filterable
           :loading="compLoading"
+          @change="onCompetitionChange"
         >
           <el-option
             v-for="c in competitions"
             :key="c.id"
-            :label="c.title"
+            :label="c.title + '（' + typeLabel(c.type) + '）'"
             :value="c.id"
           />
         </el-select>
+        <div v-if="!compLoading && competitions.length === 0" class="tip-text">
+          暂无可录入竞赛，需有已审核通过的报名记录
+        </div>
       </el-form-item>
 
-      <el-form-item label="报名类型" required>
-        <el-radio-group v-model="form.bizType">
-          <el-radio value="INDIVIDUAL">个人赛</el-radio>
-          <el-radio value="TEAM">团队赛</el-radio>
-        </el-radio-group>
+      <el-form-item v-if="form.competitionId" label="报名类型">
+        <el-tag>{{ typeLabel(form.bizType) }}</el-tag>
       </el-form-item>
 
-      <el-form-item label="报名记录 ID" required>
-        <el-input v-model="form.bizId" placeholder="对应的报名记录 ID（APPROVED 状态）" />
+      <el-form-item label="选择学生/队伍" required>
+        <el-select
+          v-model="form.bizId"
+          :placeholder="candidateLoading ? '加载中...' : '请先选择竞赛'"
+          style="width:100%;"
+          filterable
+          :loading="candidateLoading"
+          :disabled="!form.competitionId || candidateList.length === 0"
+          @change="onCandidateChange"
+        >
+          <el-option
+            v-for="c in candidateList"
+            :key="c.bizType + '-' + c.bizId"
+            :label="c.displayName"
+            :value="c.bizId"
+          >
+            <span>{{ c.displayName }}</span>
+            <el-tag v-if="c.bizType === 'TEAM'" size="small" style="margin-left:8px;">团队</el-tag>
+            <el-tag v-else size="small" type="info" style="margin-left:8px;">个人</el-tag>
+          </el-option>
+        </el-select>
+        <div v-if="form.competitionId && !candidateLoading && candidateList.length === 0" class="tip-text">
+          该竞赛下无已审核通过的学生/队伍记录
+        </div>
       </el-form-item>
 
       <el-form-item label="奖项等级" required>
-        <el-select v-model="form.awardLevel" style="width:100%;">
-          <el-option label="国家一等奖" value="NATIONAL_FIRST" />
-          <el-option label="国家二等奖" value="NATIONAL_SECOND" />
-          <el-option label="国家三等奖" value="NATIONAL_THIRD" />
+        <el-select v-model="form.awardLevel" placeholder="请选择奖项等级" style="width:100%;">
+          <el-option label="国家级一等奖" value="NATIONAL_FIRST" />
+          <el-option label="国家级二等奖" value="NATIONAL_SECOND" />
+          <el-option label="国家级三等奖" value="NATIONAL_THIRD" />
           <el-option label="省级一等奖" value="PROVINCIAL_FIRST" />
           <el-option label="省级二等奖" value="PROVINCIAL_SECOND" />
           <el-option label="省级三等奖" value="PROVINCIAL_THIRD" />
@@ -62,7 +86,13 @@
       </el-form-item>
 
       <el-form-item label="获奖日期" required>
-        <el-date-picker v-model="form.awardDate" type="date" placeholder="选择日期" style="width:100%;" value-format="YYYY-MM-DD" />
+        <el-date-picker
+          v-model="form.awardDate"
+          type="date"
+          placeholder="选择获奖日期"
+          style="width:100%;"
+          value-format="YYYY-MM-DD"
+        />
       </el-form-item>
 
       <el-form-item>
@@ -75,36 +105,66 @@
 
 <script setup lang="ts">
 import { reactive, ref, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 
 const submitting = ref(false)
 const compLoading = ref(false)
+const candidateLoading = ref(false)
 const competitions = ref<any[]>([])
+const candidateList = ref<any[]>([])
+
 const form = reactive({
   competitionId: null as number | null,
   bizType: 'INDIVIDUAL',
-  bizId: '',
+  bizId: null as number | null,
   awardLevel: '',
   awardName: '',
   certificateUrl: '',
   awardDate: ''
 })
 
+const typeLabel = (type: string) => type === 'INDIVIDUAL' ? '个人赛' : '团队赛'
+
 const loadCompetitions = async () => {
   compLoading.value = true
   try {
-    const res: any = await request({ url: '/v1/competitions', method: 'GET', params: { page: 1, size: 200 } })
-    if (res.code === 0) competitions.value = res.data?.list ?? []
+    const res: any = await request({ url: '/v1/award/teacher/competitions', method: 'GET' })
+    if (res.code === 0) competitions.value = res.data ?? []
   } finally {
     compLoading.value = false
   }
+}
+
+const onCompetitionChange = async (compId: number) => {
+  form.bizId = null
+  candidateList.value = []
+  if (!compId) return
+  const comp = competitions.value.find((c: any) => c.id === compId)
+  form.bizType = comp?.type || 'INDIVIDUAL'
+  candidateLoading.value = true
+  try {
+    const res: any = await request({ url: '/v1/award/teacher/candidates', method: 'GET', params: { competitionId: compId } })
+    if (res.code === 0) candidateList.value = res.data ?? []
+  } finally {
+    candidateLoading.value = false
+  }
+}
+
+const onCandidateChange = (bizId: number) => {
+  // 自动记忆 bizType（已在下拉时从 API 获取）
 }
 
 const handleUpload = async (file: File) => {
   const formData = new FormData()
   formData.append('file', file)
   try {
-    const res: any = await request({ url: '/v1/award/upload', method: 'POST', data: formData, headers: { 'Content-Type': 'multipart/form-data' } })
+    const res: any = await request({
+      url: '/v1/award/upload',
+      method: 'POST',
+      data: formData,
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
     if (res.code === 0) {
       form.certificateUrl = res.data.url
       ElMessage.success('上传成功')
@@ -114,18 +174,34 @@ const handleUpload = async (file: File) => {
   } catch {
     ElMessage.error('上传失败')
   }
-  return false // 阻止 el-upload 自动上传
+  return false
 }
 
 const handleSubmit = async () => {
-  if (!form.competitionId || !form.bizId || !form.awardLevel || !form.awardName || !form.certificateUrl || !form.awardDate) {
-    return ElMessage.warning('请填写所有必填项')
-  }
+  if (!form.competitionId) return ElMessage.warning('请选择竞赛')
+  if (!form.bizId) return ElMessage.warning('请选择学生或队伍')
+  if (!form.awardLevel) return ElMessage.warning('请选择奖项等级')
+  if (!form.awardName.trim()) return ElMessage.warning('请输入奖项名称')
+  if (!form.certificateUrl) return ElMessage.warning('请上传获奖证书图片')
+  if (!form.awardDate) return ElMessage.warning('请选择获奖日期')
+
+  const selected = candidateList.value.find((c: any) => c.bizId === form.bizId)
+  if (!selected) return ElMessage.warning('请重新选择学生或队伍')
+
   submitting.value = true
   try {
     const res: any = await request({
-      url: '/v1/award', method: 'POST',
-      data: { ...form, bizId: Number(form.bizId) }
+      url: '/v1/award',
+      method: 'POST',
+      data: {
+        competitionId: form.competitionId,
+        bizType: selected.bizType,
+        bizId: form.bizId,
+        awardLevel: form.awardLevel,
+        awardName: form.awardName.trim(),
+        certificateUrl: form.certificateUrl,
+        awardDate: form.awardDate
+      }
     })
     if (res.code === 0) {
       ElMessage.success('提交成功，等待管理员审核')
@@ -141,8 +217,14 @@ const handleSubmit = async () => {
 }
 
 const resetForm = () => {
-  form.competitionId = null; form.bizId = ''; form.awardLevel = ''
-  form.awardName = ''; form.certificateUrl = ''; form.awardDate = ''
+  form.competitionId = null
+  form.bizType = 'INDIVIDUAL'
+  form.bizId = null
+  form.awardLevel = ''
+  form.awardName = ''
+  form.certificateUrl = ''
+  form.awardDate = ''
+  candidateList.value = []
 }
 
 onMounted(loadCompetitions)
@@ -154,4 +236,5 @@ onMounted(loadCompetitions)
 .upload-area { display: flex; align-items: center; gap: 12px; }
 .upload-tip { font-size: 12px; color: #111; }
 .upload-tip.muted { color: #aaa; }
+.tip-text { font-size: 12px; color: #999; margin-top: 4px; }
 </style>

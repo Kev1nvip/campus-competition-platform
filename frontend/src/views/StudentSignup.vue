@@ -92,6 +92,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { signupApi } from '@/api/signup'
 import { competitionApi } from '@/api/competition'
 import type { TeacherInfo } from '@/types/signup'

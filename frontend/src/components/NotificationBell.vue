@@ -94,6 +94,19 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 
+// 跨会话持久化已处理的申请ID，关闭弹窗再打开、页面刷新后依然生效
+const HANDLED_KEY = '_handledApplyIds'
+const getHandledIds = (): Set<number> => {
+  try {
+    const raw = localStorage.getItem(HANDLED_KEY)
+    return new Set<number>(raw ? JSON.parse(raw) : [])
+  } catch { return new Set<number>() }
+}
+const saveHandledIds = (ids: Set<number>) => {
+  localStorage.setItem(HANDLED_KEY, JSON.stringify([...ids]))
+}
+const handledApplyIds = getHandledIds()
+
 // 暴露未读数给父组件用（可选）
 const unreadCount = ref(0)
 const notifications = ref<any[]>([])
@@ -112,12 +125,15 @@ const loadNotifications = async () => {
   try {
     const res: any = await request({ url: '/v1/notifications', method: 'GET', params: { page: 1, size: 30 } })
     if (res.code === 0) {
-      notifications.value = (res.data.list ?? []).map((n: any) => ({
-        ...n,
-        _loading: false,
-        _handled: false,
-        _handleResult: ''
-      }))
+      notifications.value = (res.data.list ?? []).map((n: any) => {
+        const isHandled = handledApplyIds.has(n.relatedId)
+        return {
+          ...n,
+          _loading: false,
+          _handled: isHandled,
+          _handleResult: isHandled ? '已处理' : ''
+        }
+      })
     }
   } finally {
     notifLoading.value = false
@@ -158,7 +174,9 @@ const handleApply = async (n: any, action: 'APPROVED' | 'REJECTED', applyKind: '
       'individual-guide': `/v1/recruitment/guide/${n.relatedId}/handle`,
     }
     const res: any = await request({ url: urlMap[applyKind], method: 'PUT', params: { action } })
-    if (res.code === 0) {
+if (res.code === 0) {
+      handledApplyIds.add(n.relatedId)
+      saveHandledIds(handledApplyIds)
       n._handled = true
       const labels: Record<string, string> = {
         join: action === 'APPROVED' ? '✓ 已同意入队' : '✗ 已拒绝',
@@ -169,6 +187,8 @@ const handleApply = async (n: any, action: 'APPROVED' | 'REJECTED', applyKind: '
       n._handleResult = labels[applyKind]
       markRead(n)
       ElMessage.success(n._handleResult)
+      // 通知 ApplyList 页面同步刷新
+      window.dispatchEvent(new CustomEvent('apply-handled'))
     } else {
       ElMessage.error(res.message || '操作失败')
     }

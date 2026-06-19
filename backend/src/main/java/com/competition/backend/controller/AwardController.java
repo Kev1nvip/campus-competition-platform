@@ -9,9 +9,11 @@ import com.competition.backend.dto.CreateAwardDTO;
 import com.competition.backend.repository.AwardRecordRepository;
 import com.competition.backend.repository.CompetitionRepository;
 import com.competition.backend.repository.SysUserRepository;
+import com.competition.backend.repository.TeamRepository;
 import com.competition.backend.service.AwardService;
 import com.competition.backend.util.SecurityUtil;
 import com.competition.backend.vo.AwardVO;
+import com.competition.backend.entity.Competition;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -30,10 +32,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Tag(name = "获奖模块")
 @RestController
@@ -45,12 +45,78 @@ public class AwardController {
     private final AwardRecordRepository awardRecordRepository;
     private final SysUserRepository userRepository;
     private final CompetitionRepository competitionRepository;
-    private final com.competition.backend.repository.IndividualSignupRepository individualSignupRepository;
+private final com.competition.backend.repository.IndividualSignupRepository individualSignupRepository;
     private final com.competition.backend.repository.TeamMemberRepository teamMemberRepository;
     private final com.competition.backend.repository.TeamSignupRepository teamSignupRepository;
+    private final TeamRepository teamRepository;
 
     @Value("${upload.path:./uploads}")
     private String uploadPath;
+
+    // ──────────────────────────────────────────────
+    // 老师录获奖：可选竞赛
+    // ──────────────────────────────────────────────
+    @Operation(summary = "老师获取可录获奖的竞赛列表（有 APPROVED 报名的竞赛）")
+    @GetMapping("/teacher/competitions")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
+    public Result<List<Map<String, Object>>> teacherAwardCompetitions() {
+        Long teacherId = SecurityUtil.getCurrentUserId();
+        Set<Long> compIds = new LinkedHashSet<>();
+        individualSignupRepository.findByTeacherIdAndStatus(teacherId, "APPROVED")
+                .forEach(s -> compIds.add(s.getCompetitionId()));
+        teamSignupRepository.findByTeacherIdAndStatus(teacherId, "APPROVED")
+                .forEach(s -> compIds.add(s.getCompetitionId()));
+        List<Map<String, Object>> result = compIds.stream()
+                .map(id -> competitionRepository.findById(id).orElse(null))
+                .filter(Objects::nonNull)
+                .sorted(Comparator.comparing(Competition::getTitle))
+                .map(c -> {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("id", c.getId());
+                    item.put("title", c.getTitle());
+                    item.put("type", c.getType());
+                    return item;
+                })
+                .collect(Collectors.toList());
+        return Result.success(result);
+    }
+
+    // ──────────────────────────────────────────────
+    // 老师录获奖：可选学生/队伍
+    // ──────────────────────────────────────────────
+    @Operation(summary = "老师获取某竞赛下已通过报名的学生/队伍列表")
+    @GetMapping("/teacher/candidates")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
+    public Result<List<Map<String, Object>>> teacherAwardCandidates(@RequestParam Long competitionId) {
+        Long teacherId = SecurityUtil.getCurrentUserId();
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        individualSignupRepository
+                .findByTeacherIdAndCompetitionIdAndStatus(teacherId, competitionId, "APPROVED")
+                .forEach(s -> {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("bizType", "INDIVIDUAL");
+                    item.put("bizId", s.getId());
+                    userRepository.findById(s.getStudentId()).ifPresent(u ->
+                            item.put("displayName", u.getRealName() + "（" + (u.getStudentNo() != null ? u.getStudentNo() : "") + "）"));
+                    result.add(item);
+                });
+
+        teamSignupRepository
+                .findByTeacherIdAndCompetitionIdAndStatus(teacherId, competitionId, "APPROVED")
+                .forEach(s -> {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("bizType", "TEAM");
+                    item.put("bizId", s.getId());
+                    teamRepository.findById(s.getTeamId()).ifPresent(t -> {
+                        long memberCount = teamMemberRepository.findByTeamId(t.getId()).size();
+                        item.put("displayName", t.getTeamName() + "（" + memberCount + "人）");
+                    });
+                    result.add(item);
+                });
+
+        return Result.success(result);
+    }
 
     @Operation(summary = "提交获奖记录")
     @PostMapping
