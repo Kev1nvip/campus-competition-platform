@@ -22,6 +22,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
+
 @Service
 @RequiredArgsConstructor
 public class AwardServiceImpl implements AwardService {
@@ -56,17 +58,33 @@ public class AwardServiceImpl implements AwardService {
             });
         }
 
-        AwardRecord record = AwardRecord.builder()
-                .competitionId(dto.getCompetitionId())
-                .submitterId(userId)
-                .bizType(dto.getBizType())
-                .bizId(dto.getBizId())
-                .awardLevel(dto.getAwardLevel())
-                .awardName(dto.getAwardName())
-                .certificateUrl(dto.getCertificateUrl())
-                .awardDate(dto.getAwardDate())
-                .status("PENDING")
-                .build();
+        // 检查是否有被驳回的旧获奖记录，有则复用更新，无则新建
+        Optional<AwardRecord> existing = awardRecordRepository
+                .findTopByBizTypeAndBizIdOrderByCreatedAtDesc(dto.getBizType(), dto.getBizId());
+
+        AwardRecord record;
+        if (existing.isPresent() && "REJECTED".equals(existing.get().getStatus())) {
+            record = existing.get();
+            record.setCompetitionId(dto.getCompetitionId());
+            record.setSubmitterId(userId);
+            record.setAwardLevel(dto.getAwardLevel());
+            record.setAwardName(dto.getAwardName());
+            record.setCertificateUrl(dto.getCertificateUrl());
+            record.setAwardDate(dto.getAwardDate());
+            record.setStatus("PENDING");
+        } else {
+            record = AwardRecord.builder()
+                    .competitionId(dto.getCompetitionId())
+                    .submitterId(userId)
+                    .bizType(dto.getBizType())
+                    .bizId(dto.getBizId())
+                    .awardLevel(dto.getAwardLevel())
+                    .awardName(dto.getAwardName())
+                    .certificateUrl(dto.getCertificateUrl())
+                    .awardDate(dto.getAwardDate())
+                    .status("PENDING")
+                    .build();
+        }
         AwardRecord saved = awardRecordRepository.save(record);
 
         // 通知管理员：有获奖记录待审核

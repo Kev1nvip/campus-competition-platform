@@ -5,9 +5,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Optional;
+
 public interface AwardRecordRepository extends JpaRepository<AwardRecord, Long> {
     Page<AwardRecord> findByCompetitionId(Long competitionId, Pageable pageable);
     Page<AwardRecord> findBySubmitterId(Long submitterId, Pageable pageable);
     long countByStatus(String status);
     Page<AwardRecord> findByStatus(String status, Pageable pageable);
+    Optional<AwardRecord> findTopByBizTypeAndBizIdOrderByCreatedAtDesc(String bizType, Long bizId);
 }
