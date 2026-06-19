@@ -30,16 +30,6 @@
           >
             邀请队友
           </el-button>
-          <!-- 队长：提交管理员审核（老师已确认且人数满足要求） -->
-          <el-button
-            v-if="currentUserRole === 'LEADER' && team.teacherConfirmed && team.status === 'FORMING'"
-            size="small"
-            type="primary"
-            :loading="submittingAudit"
-            @click="handleSubmitAudit"
-          >
-            提交审核
-          </el-button>
           <!-- 队员：可退出（FORMING/FULL 状态） -->
           <el-button
             v-if="currentUserRole === 'MEMBER' && (team.status === 'FORMING' || team.status === 'FULL')"
@@ -264,9 +254,6 @@ const showApply = ref(false)
 const applyMotivation = ref('')
 const applying = ref(false)
 
-// 提交团队赛管理员审核
-const submittingAudit = ref(false)
-
 // 申请老师带队
 const showSelectTeacher = ref(false)
 const teacherKeyword = ref('')
@@ -390,42 +377,6 @@ const submitApply = async () => {
     ElMessage.error('网络错误')
   } finally {
     applying.value = false
-  }
-}
-
-const handleSubmitAudit = async () => {
-  submittingAudit.value = true
-  try {
-    // Step1：创建团队赛报名草稿
-    const createRes: any = await request({
-      url: '/v1/signups/team',
-      method: 'POST',
-      data: { teamId: Number(route.params.id) }
-    })
-    if (createRes.code !== 0) {
-      ElMessage.error(createRes.message || '创建报名失败')
-      return
-    }
-    const signupId = createRes.data?.signupId
-    if (!signupId) {
-      ElMessage.error('获取报名ID失败')
-      return
-    }
-    // Step2：提交给管理员审核
-    const submitRes: any = await request({
-      url: `/v1/signups/team/${signupId}/submit`,
-      method: 'POST'
-    })
-    if (submitRes.code === 0) {
-      ElMessage.success('已提交审核，等待管理员审核')
-      fetchTeam()
-    } else {
-      ElMessage.error(submitRes.message || '提交失败')
-    }
-  } catch {
-    ElMessage.error('网络错误')
-  } finally {
-    submittingAudit.value = false
   }
 }
 
